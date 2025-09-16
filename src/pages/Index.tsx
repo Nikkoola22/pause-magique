@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { LeaveRequestForm, LeaveRequest } from "@/components/LeaveRequestForm";
 import { LeaveTable } from "@/components/LeaveTable";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, BarChart3 } from "lucide-react";
+import { Users, Calendar, BarChart3, User, ExternalLink } from "lucide-react";
 
 const Index = () => {
   const [employees] = useState([
@@ -125,18 +127,33 @@ const Index = () => {
                   {employees.map(employee => (
                     <div
                       key={employee.id}
-                      className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      className={`p-4 rounded-lg border cursor-pointer transition-all group ${
                         selectedEmployeeId === employee.id
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
                       }`}
                       onClick={() => setSelectedEmployeeId(employee.id)}
                     >
-                      <div className="font-semibold">
-                        {employee.name} {employee.firstName}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Ancienneté: {employee.seniority} • Quotité: {employee.workQuota}h
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold flex items-center gap-2">
+                            <User className="w-4 h-4" />
+                            {employee.name} {employee.firstName}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Ancienneté: {employee.seniority} • Quotité: {employee.workQuota}h
+                          </div>
+                        </div>
+                        <Link to={`/agent/${employee.id}`}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   ))}
