@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, User, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import bcrypt from "bcryptjs";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -59,13 +57,21 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      const { data: adminData, error } = await supabase
-        .from('administrators')
-        .select('*')
-        .eq('username', adminCredentials.username)
-        .single();
+      const response = await fetch('https://jstgllotjifmgjxjsbpm.supabase.co/functions/v1/admin-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzdGdsbG90amlmbWdqeGpzYnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NzA0NDIsImV4cCI6MjA3MzQ0NjQ0Mn0.g-Zllg8NqrqNg-do5v2TCakK4RXUb6KAyvhS_yEiks4`
+        },
+        body: JSON.stringify({
+          username: adminCredentials.username,
+          password: adminCredentials.password
+        })
+      });
 
-      if (error || !adminData) {
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
         toast({
           title: "Erreur de connexion",
           description: "Nom d'utilisateur ou mot de passe incorrect",
@@ -74,22 +80,8 @@ const LoginPage = () => {
         return;
       }
 
-      const isPasswordValid = await bcrypt.compare(adminCredentials.password, adminData.password_hash);
-      
-      if (!isPasswordValid) {
-        toast({
-          title: "Erreur de connexion", 
-          description: "Nom d'utilisateur ou mot de passe incorrect",
-          variant: "destructive"
-        });
-        return;
-      }
-
       // Connexion réussie
-      sessionStorage.setItem('admin_session', JSON.stringify({ 
-        id: adminData.id, 
-        username: adminData.username 
-      }));
+      sessionStorage.setItem('admin_session', JSON.stringify(result.admin));
       
       toast({
         title: "Connexion réussie",
