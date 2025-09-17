@@ -26,10 +26,13 @@ serve(async (req) => {
     }
 
     // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://jstgllotjifmgjxjsbpm.supabase.co'
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    
+    console.log('Supabase URL:', supabaseUrl)
+    console.log('Service key available:', !!supabaseServiceKey)
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Get admin from database
     const { data: admin, error } = await supabase
@@ -39,6 +42,8 @@ serve(async (req) => {
       .single()
 
     if (error || !admin) {
+      console.log('Admin lookup error:', error)
+      console.log('Admin found:', !!admin)
       return new Response(
         JSON.stringify({ error: 'Invalid credentials' }),
         { 
@@ -75,6 +80,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    console.error('Error in admin-login function:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
