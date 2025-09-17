@@ -7,12 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogIn, User, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import bcrypt from "bcryptjs";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedAgent, setSelectedAgent] = useState<string>("");
   const [loginMode, setLoginMode] = useState<"select" | "admin">("select");
+  const [adminCredentials, setAdminCredentials] = useState({ username: "", password: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
   const employees = [
     {
@@ -42,8 +46,66 @@ const LoginPage = () => {
     navigate(`/agent/${selectedAgent}`);
   };
 
-  const handleAdminLogin = () => {
-    navigate("/");
+  const handleAdminLogin = async () => {
+    if (!adminCredentials.username || !adminCredentials.password) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez saisir vos identifiants",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const { data: adminData, error } = await supabase
+        .from('administrators')
+        .select('*')
+        .eq('username', adminCredentials.username)
+        .single();
+
+      if (error || !adminData) {
+        toast({
+          title: "Erreur de connexion",
+          description: "Nom d'utilisateur ou mot de passe incorrect",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const isPasswordValid = await bcrypt.compare(adminCredentials.password, adminData.password_hash);
+      
+      if (!isPasswordValid) {
+        toast({
+          title: "Erreur de connexion", 
+          description: "Nom d'utilisateur ou mot de passe incorrect",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Connexion réussie
+      sessionStorage.setItem('admin_session', JSON.stringify({ 
+        id: adminData.id, 
+        username: adminData.username 
+      }));
+      
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue dans l'espace administrateur",
+      });
+      
+      navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de la connexion",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -127,6 +189,8 @@ const LoginPage = () => {
                       id="username" 
                       placeholder="Entrez votre nom d'utilisateur"
                       type="text"
+                      value={adminCredentials.username}
+                      onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-2">
@@ -135,6 +199,8 @@ const LoginPage = () => {
                       id="password" 
                       placeholder="Entrez votre mot de passe"
                       type="password"
+                      value={adminCredentials.password}
+                      onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -142,9 +208,10 @@ const LoginPage = () => {
                   onClick={handleAdminLogin} 
                   className="w-full"
                   size="lg"
+                  disabled={isLoading}
                 >
                   <LogIn className="w-4 h-4 mr-2" />
-                  Tableau de bord
+                  {isLoading ? "Connexion..." : "Tableau de bord"}
                 </Button>
               </>
             )}
