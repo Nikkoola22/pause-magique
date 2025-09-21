@@ -29,21 +29,22 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://jstgllotjifmgjxjsbpm.supabase.co'
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     
-    console.log('Supabase URL:', supabaseUrl)
-    console.log('Service key available:', !!supabaseServiceKey)
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Get admin from database
-    const { data: admin, error } = await supabase
-      .from('admins')
-      .select('*')
+    // Get user from database with service information
+    const { data: user, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        service:services(name, description),
+        created_by_user:users!created_by(first_name, last_name)
+      `)
       .eq('username', username)
+      .eq('is_active', true)
       .single()
 
-    if (error || !admin) {
-      console.log('Admin lookup error:', error)
-      console.log('Admin found:', !!admin)
+    if (error || !user) {
+      console.log('User lookup error:', error)
       return new Response(
         JSON.stringify({ error: 'Invalid credentials' }),
         { 
@@ -54,7 +55,7 @@ serve(async (req) => {
     }
 
     // Verify password
-    const isPasswordValid = await compare(password, admin.password_hash)
+    const isPasswordValid = await compare(password, user.password_hash)
 
     if (!isPasswordValid) {
       return new Response(
@@ -66,13 +67,13 @@ serve(async (req) => {
       )
     }
 
-    // Return success with admin data (without password)
-    const { password_hash, ...adminData } = admin
+    // Return success with user data (without password)
+    const { password_hash, ...userData } = user
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        admin: adminData 
+        user: userData 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -80,7 +81,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error in admin-login function:', error)
+    console.error('Error in user-login function:', error)
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 

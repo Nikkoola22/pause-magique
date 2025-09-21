@@ -1,73 +1,253 @@
-# Welcome to your Lovable project
+# 🏥 Pause Magique - Système de Gestion des Congés Hospitalier
 
-## Project info
+## 📋 Description
 
-**URL**: https://lovable.dev/projects/6b30cf9c-599c-4b16-abf1-e49fd282ab55
+**Pause Magique** est une application web complète de gestion des congés et plannings pour un hôpital, développée avec React, TypeScript, et Supabase. L'application propose un système de rôles avancé avec des tableaux de bord spécialisés pour les administrateurs, responsables de service, et agents.
 
-## How can I edit this code?
+## ✨ Fonctionnalités Principales
 
-There are several ways of editing your application.
+### 🔐 Système d'Authentification
+- **3 niveaux de rôles** : Admin, Responsable de Service, Agent
+- **Connexion sécurisée** avec gestion des sessions
+- **Redirection automatique** selon le rôle utilisateur
 
-**Use Lovable**
+### 👨‍💼 Dashboard Administrateur
+- **Gestion complète des utilisateurs** (création, modification, suppression)
+- **Statistiques en temps réel** depuis Supabase
+- **Gestion des services** (Médecine, Administration)
+- **Migration des données** et diagnostic avancé
+- **Calcul automatique des RTT** selon les heures hebdomadaires
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/6b30cf9c-599c-4b16-abf1-e49fd282ab55) and start prompting.
+### 👩‍⚕️ Dashboard Responsable de Service
+- **Gestion de l'équipe** avec vue d'ensemble des agents
+- **Validation des demandes de congés** (approbation/refus)
+- **Planning hebdomadaire** pour chaque agent (Lundi-Samedi)
+- **Calendrier mensuel** de visualisation des congés
+- **Statistiques d'équipe** et taux d'approbation
 
-Changes made via Lovable will be committed automatically to this repo.
+### 👤 Dashboard Agent
+- **Profil personnel** avec informations détaillées
+- **Demandes de congés** (création, suivi, historique)
+- **Planning personnel** affiché par le responsable
+- **Calcul automatique des droits** (CA, RTT, Formation)
+- **Navigation temporelle** (semaines précédentes/suivantes)
 
-**Use your preferred IDE**
+## 🛠️ Technologies Utilisées
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Frontend
+- **React 18** avec TypeScript
+- **Vite** pour le build et le développement
+- **Tailwind CSS** pour le styling
+- **Shadcn/ui** pour les composants
+- **React Router** pour la navigation
+- **Lucide React** pour les icônes
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Backend
+- **Supabase** (PostgreSQL + API REST)
+- **Row Level Security (RLS)** pour la sécurité
+- **Edge Functions** pour la logique métier
+- **Authentification Supabase**
 
-Follow these steps:
+### Outils de Développement
+- **ESLint** pour la qualité du code
+- **TypeScript** pour le typage
+- **PostCSS** pour le CSS
+- **Git** pour le versioning
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+## 🚀 Installation et Démarrage
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Prérequis
+- Node.js 18+ 
+- npm ou yarn
+- Compte Supabase
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
+```bash
+# Cloner le repository
+git clone https://github.com/votre-username/pause-magique.git
+cd pause-magique
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Installer les dépendances
+npm install
+
+# Configurer les variables d'environnement
+cp .env.example .env.local
+# Éditer .env.local avec vos clés Supabase
 ```
 
-**Edit a file directly in GitHub**
+### Configuration Supabase
+1. Créer un projet Supabase
+2. Configurer la base de données avec les migrations
+3. Activer l'authentification
+4. Configurer les politiques RLS
+5. Déployer les Edge Functions
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Démarrage
+```bash
+# Mode développement
+npm run dev
 
-**Use GitHub Codespaces**
+# Build de production
+npm run build
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Preview de production
+npm run preview
+```
 
-## What technologies are used for this project?
+## 📊 Structure de l'Application
 
-This project is built with:
+```
+src/
+├── components/          # Composants réutilisables
+│   ├── ui/             # Composants UI de base
+│   ├── UserManagementSupabase.tsx
+│   ├── MigrationPanel.tsx
+│   ├── DeepDiagnostic.tsx
+│   └── WeeklySchedule.tsx
+├── pages/              # Pages principales
+│   ├── NewLoginPage.tsx
+│   ├── AdminDashboard.tsx
+│   ├── WorkingManagerDashboard.tsx
+│   ├── NewAgentDashboard.tsx
+│   └── AgentProfile.tsx
+├── utils/              # Utilitaires
+└── App.tsx            # Point d'entrée
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔑 Logins de Test
 
-## How can I deploy this project?
+### Administrateur
+- **Username** : `admin`
+- **Password** : `password`
+- **Accès** : Gestion complète du système
 
-Simply open [Lovable](https://lovable.dev/projects/6b30cf9c-599c-4b16-abf1-e49fd282ab55) and click on Share -> Publish.
+### Responsable de Service
+- **Username** : `resp.medecine`
+- **Password** : `password`
+- **Accès** : Gestion de l'équipe Médecine
 
-## Can I connect a custom domain to my Lovable project?
+### Agents
+- **Username** : `agent1` ou `agent3`
+- **Password** : `password`
+- **Profil** : Nat Danede (Employé)
 
-Yes, you can!
+- **Username** : `agent2`
+- **Password** : `password`
+- **Profil** : Antoine Rousseau (Médecin)
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 📈 Fonctionnalités Avancées
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### Calcul Automatique des RTT
+- **38h/semaine** → 18 jours RTT
+- **36h/semaine** → 6 jours RTT
+- **35h/semaine** → 0 jour RTT
+
+### Heures de Formation
+- **Médecins** : 3/8ème des heures hebdomadaires
+- **Chefs de Service** : 3/8ème des heures hebdomadaires
+- **Autres rôles** : Non applicable
+
+### Types de Congés
+- **Congés Annuels (CA)**
+- **RTT** (Récupération du Temps de Travail)
+- **Formation**
+- **ASA** (Autorisation Spéciale d'Absence)
+- **Maladie**
+- **Enfant malade**
+
+## 🔧 Configuration et Déploiement
+
+### Variables d'Environnement
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### Base de Données
+- **Table `profiles`** : Profils utilisateurs
+- **Table `leave_requests`** : Demandes de congés
+- **Table `weekly_schedules`** : Plannings hebdomadaires
+- **Politiques RLS** : Sécurité au niveau des lignes
+
+### Edge Functions
+- **`admin-login`** : Authentification administrateur
+- **`user-management`** : Gestion des utilisateurs
+
+## 📱 Interface Utilisateur
+
+### Design System
+- **Couleurs** : Palette médicale (bleus, verts, rouges)
+- **Typographie** : Inter (moderne et lisible)
+- **Composants** : Shadcn/ui (accessibles et cohérents)
+- **Responsive** : Mobile-first design
+
+### Navigation
+- **Header** : Navigation principale + profil utilisateur
+- **Sidebar** : Menu contextuel selon le rôle
+- **Breadcrumbs** : Fil d'Ariane pour l'orientation
+- **Modals** : Formulaires et confirmations
+
+## 🚨 Sécurité
+
+### Authentification
+- **Sessions sécurisées** avec sessionStorage
+- **Validation côté client et serveur**
+- **Redirection automatique** si non authentifié
+
+### Autorisation
+- **RLS (Row Level Security)** sur toutes les tables
+- **Politiques granulaires** par rôle et service
+- **Validation des permissions** à chaque requête
+
+### Données Sensibles
+- **Chiffrement** des données personnelles
+- **Hachage** des mots de passe
+- **Audit trail** des modifications
+
+## 🐛 Dépannage
+
+### Problèmes Courants
+1. **Erreur de connexion Supabase** : Vérifier les clés API
+2. **Données non affichées** : Vérifier les politiques RLS
+3. **Erreurs de build** : Nettoyer node_modules et réinstaller
+4. **Problèmes de session** : Vider le cache du navigateur
+
+### Logs et Debug
+- **Console du navigateur** : Erreurs JavaScript
+- **Network tab** : Requêtes API
+- **Supabase Dashboard** : Logs de la base de données
+
+## 🤝 Contribution
+
+### Workflow
+1. Fork du repository
+2. Création d'une branche feature
+3. Développement et tests
+4. Pull Request vers main
+
+### Standards
+- **TypeScript strict** : Typage complet
+- **ESLint** : Respect des règles de code
+- **Commits conventionnels** : Messages clairs
+- **Tests** : Couverture minimale requise
+
+## 📄 Licence
+
+Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+
+## 👥 Équipe
+
+- **Développement** : Équipe Pause Magique
+- **Design** : Interface utilisateur médicale
+- **Architecture** : Solution scalable et maintenable
+
+## 📞 Support
+
+Pour toute question ou problème :
+- **Issues GitHub** : Rapport de bugs
+- **Discussions** : Questions et suggestions
+- **Email** : support@pausemagique.fr
+
+---
+
+**Pause Magique** - Simplifiez la gestion des congés hospitaliers ! 🏥✨

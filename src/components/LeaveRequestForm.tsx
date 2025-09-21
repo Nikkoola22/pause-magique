@@ -31,7 +31,7 @@ const LEAVE_TYPES = [
   { value: "CM", label: "Congés Maladie (CM)" },
   { value: "RTT", label: "RTT" },
   { value: "HS", label: "Heures Supplémentaires" },
-  { value: "CP", label: "Congés Paternité" },
+  { value: "ASA", label: "ASA" },
   { value: "CB", label: "Congés de Bonification" }
 ];
 

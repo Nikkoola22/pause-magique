@@ -464,7 +464,7 @@ export type Database = {
       leave_status: "en_attente" | "approuve" | "refuse"
       onboarding_status: "non_commence" | "en_cours" | "termine"
       service_type: "medecine" | "dentaire" | "radiologie"
-      user_role: "admin" | "chef_service" | "employe"
+      user_role: "admin" | "chef_service" | "employe" | "medecin" | "infirmiere" | "dentiste" | "assistante_dentaire" | "rh" | "comptabilite" | "sage_femme"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -595,7 +595,7 @@ export const Constants = {
       leave_status: ["en_attente", "approuve", "refuse"],
       onboarding_status: ["non_commence", "en_cours", "termine"],
       service_type: ["medecine", "dentaire", "radiologie"],
-      user_role: ["admin", "chef_service", "employe"],
+      user_role: ["admin", "chef_service", "employe", "medecin", "infirmiere", "dentiste", "assistante_dentaire", "rh", "comptabilite", "sage_femme"],
     },
   },
 } as const
