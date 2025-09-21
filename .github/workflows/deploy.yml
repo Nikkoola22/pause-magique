@@ -32,5 +32,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          publish_branch: main
-          destination_dir: docs
+          publish_branch: gh-pages # Pousser vers la branche gh-pages
+          # destination_dir: docs # Supprimer cette ligne
