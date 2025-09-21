@@ -29,5 +29,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          # CNAME: example.com # Décommenter et remplacer par votre domaine personnalisé si vous en avez un
-          # publish_branch: gh-pages # La branche où les fichiers construits seront poussés
+          publish_branch: main # Pousser vers la branche main
+          destination_dir: docs # Dans le sous-dossier docs
