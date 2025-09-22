@@ -191,3 +191,7 @@ INSERT INTO public.users (username, password_hash, first_name, last_name, role, 
  (SELECT id FROM public.services WHERE name = 'Dentaire')),
 ('agent3', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Claire', 'Moreau', 'employe',
  (SELECT id FROM public.services WHERE name = 'Radiologie'));
+
+
+
+
