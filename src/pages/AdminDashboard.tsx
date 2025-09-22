@@ -67,20 +67,51 @@ const AdminDashboard = () => {
       if (response.ok) {
         const users = await response.json();
         
-        // Filtrer les agents
-        const agents = users.filter(user => 
-          user.role === 'employe' || 
-          user.role === 'medecin' || 
-          user.role === 'infirmiere' ||
-          user.role === 'dentiste' ||
-          user.role === 'assistante_dentaire' ||
-          user.role === 'rh' ||
-          user.role === 'comptabilite' ||
-          user.role === 'sage_femme'
-        );
+        // Filtrer les agents (avec vérification du nom)
+        const agents = users.filter(user => {
+          const isAgentRole = (user.role === 'employe' || 
+                              user.role === 'medecin' || 
+                              user.role === 'infirmiere' ||
+                              user.role === 'dentiste' ||
+                              user.role === 'assistante_dentaire' ||
+                              user.role === 'rh' ||
+                              user.role === 'comptabilite' ||
+                              user.role === 'sage_femme');
+          
+          // Vérifier le nom (utiliser full_name si name n'existe pas)
+          const userName = user.name || user.full_name;
+          const hasValidName = userName && userName.trim() !== '';
+          
+          // Ajouter le champ name si il manque
+          if (!user.name && user.full_name) {
+            user.name = user.full_name;
+          }
+          
+          // Ajouter weeklyHours si il manque
+          if (!user.weeklyHours) {
+            user.weeklyHours = user.role === 'medecin' ? 36 : 
+                              user.role === 'infirmiere' ? 35 : 
+                              user.role === 'employe' ? 36 : 35;
+          }
+          
+          return isAgentRole && hasValidName;
+        });
         
-        // Filtrer les managers
-        const managers = users.filter(user => user.role === 'chef_service');
+        // Filtrer les managers (avec vérification du nom)
+        const managers = users.filter(user => {
+          const isManagerRole = user.role === 'chef_service';
+          
+          // Vérifier le nom (utiliser full_name si name n'existe pas)
+          const userName = user.name || user.full_name;
+          const hasValidName = userName && userName.trim() !== '';
+          
+          // Ajouter le champ name si il manque
+          if (!user.name && user.full_name) {
+            user.name = user.full_name;
+          }
+          
+          return isManagerRole && hasValidName;
+        });
         
         // Calculer les services
         const services = [...new Set(users.map(user => user.service).filter(Boolean))].map(service => {
@@ -243,11 +274,11 @@ const AdminDashboard = () => {
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                       <span className="text-lg font-bold text-blue-600">
-                        {agent.name.split(' ').map(n => n[0]).join('')}
+                        {agent.name ? agent.name.split(' ').map(n => n[0]).join('') : '??'}
                       </span>
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-semibold">{agent.name}</h3>
+                      <h3 className="font-semibold">{agent.name || 'Nom non défini'}</h3>
                       <p className="text-sm text-gray-600">{agent.role}</p>
                       <p className="text-xs text-blue-600">{agent.service}</p>
                       <p className="text-xs text-gray-500">{agent.weeklyHours}h/semaine</p>
