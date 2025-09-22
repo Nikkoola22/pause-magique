@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,19 @@ import {
 import ReadOnlySchedule from "../components/ReadOnlySchedule";
 import WeeklySchedule from "../components/WeeklySchedule";
 
+const getCurrentYear = () => new Date().getFullYear();
+const getPreviousYear = () => getCurrentYear() - 1;
+
+const NewAgentDashboard = () => {
+  const [previousRights, setPreviousRights] = useState<{ ca: number, rtt: number } | null>(null);
+  const [userSession, setUserSession] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [agent, setAgent] = useState<Agent | null>(null);
+
+// Utilitaire pour obtenir l'année courante et précédente
+const getCurrentYear = () => new Date().getFullYear();
+const getPreviousYear = () => getCurrentYear() - 1;
+
 interface Agent {
   id: string;
   name: string;
@@ -59,6 +72,8 @@ interface LeaveRequest {
 }
 
 const NewAgentDashboard = () => {
+  // Hook pour stocker les droits restants de l'année précédente
+  const [previousRights, setPreviousRights] = useState<{ ca: number, rtt: number } | null>(null);
   // Récupérer la session utilisateur
   const [userSession, setUserSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -191,6 +206,35 @@ const NewAgentDashboard = () => {
 
   // Initialiser l'agent à partir de la session
   useEffect(() => {
+  // Réinitialisation automatique des droits au 1er janvier
+  useEffect(() => {
+    if (!agent) return;
+    const now = new Date();
+    if (now.getMonth() === 0 && now.getDate() === 1) {
+      // On est le 1er janvier
+      // Récupérer les droits restants de l'année précédente
+      const agentRequests = getAgentRequests(agent);
+      const caRequests = agentRequests.filter(req => req.leave_type === 'Congés payés' && req.status === 'approuve' && new Date(req.start_date).getFullYear() === getPreviousYear());
+      const usedCADays = caRequests.reduce((sum, req) => sum + req.days_count, 0);
+      const totalCADays = agent.congésAnnuel || 25;
+      const caRestant = Math.max(0, totalCADays - usedCADays);
+
+      const rttRequests = agentRequests.filter(req => req.leave_type === 'RTT' && req.status === 'approuve' && new Date(req.start_date).getFullYear() === getPreviousYear());
+      const rttTotal = agent.rttDays || 0;
+      // Pour RTT, on suppose que le calcul est en heures
+      const rttUsed = rttRequests.reduce((sum, req) => sum + (req.days_count * 7), 0); // 1 jour = 7h (ajuster si besoin)
+      const rttRestant = Math.max(0, rttTotal - rttUsed);
+
+      setPreviousRights({ ca: caRestant, rtt: rttRestant });
+
+      // Réinitialiser les droits pour la nouvelle année
+      setEditedAgent(prev => prev ? {
+        ...prev,
+        congésAnnuel: 25,
+        rttDays: agent.rttDays || 0
+      } : prev);
+    }
+  }, [agent]);
     const sessionData = sessionStorage.getItem('user_session');
     if (sessionData) {
       try {
@@ -203,9 +247,9 @@ const NewAgentDashboard = () => {
           name: session.name,
           service: session.service || 'Médecine',
           role: session.role || 'employe',
-          email: session.email,
-          phone: session.phone,
-          hireDate: session.hireDate,
+          email: session.email || (session.name ? session.name.toLowerCase().replace(/ /g, '.') + '@hopital.fr' : ''),
+          phone: session.phone || '',
+          hireDate: session.hireDate || '2022-01-01',
           status: 'active',
           weeklyHours: 35,
           rttDays: 0,
@@ -680,16 +724,33 @@ const NewAgentDashboard = () => {
     totalDaysPending: agentRequests.filter(r => r.status === 'en_attente').reduce((sum, r) => sum + r.days_count, 0)
   };
 
+
   if (loading) {
     return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Chargement...</div>;
   }
 
+  // Affichage de debug pour diagnostiquer la page blanche
   if (!userSession || !agent || !editedAgent) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="min-h-screen bg-red-50 flex flex-col items-center justify-center text-red-800 p-8">
+        <div className="text-2xl font-bold mb-4">Erreur d'initialisation du dashboard agent</div>
+        <div className="mb-2">userSession: <pre className="bg-white text-black p-2 rounded">{JSON.stringify(userSession, null, 2)}</pre></div>
+        <div className="mb-2">agent: <pre className="bg-white text-black p-2 rounded">{JSON.stringify(agent, null, 2)}</pre></div>
+        <div className="mb-2">editedAgent: <pre className="bg-white text-black p-2 rounded">{JSON.stringify(editedAgent, null, 2)}</pre></div>
+        <div className="mt-4">Vérifiez que la session est bien initialisée après le login.</div>
+      </div>
+    );
   }
 
+  // Affichage de debug permanent pour diagnostic
   return (
     <div className="min-h-screen bg-gray-50 p-6">
+      <div className="bg-yellow-100 text-yellow-900 p-2 mb-4 rounded text-xs">
+        <strong>DEBUG:</strong>
+        <div>userSession: <pre>{JSON.stringify(userSession, null, 2)}</pre></div>
+        <div>agent: <pre>{JSON.stringify(agent, null, 2)}</pre></div>
+        <div>editedAgent: <pre>{JSON.stringify(editedAgent, null, 2)}</pre></div>
+      </div>
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header avec bouton déconnexion */}
         <div className="flex items-center justify-between">
@@ -784,15 +845,15 @@ const NewAgentDashboard = () => {
                       </div>
                     </div>
                   ) : (
-                        <div>
-                          <h2 className="text-xl font-semibold">{editedAgent.name}</h2>
-                          <p className="text-gray-600">{getRoleLabel(editedAgent.role)}</p>
-                          {/* Debug: Afficher le rôle brut pour vérification */}
-                          <p className="text-xs text-gray-400">Rôle brut: {editedAgent.role}</p>
-                          <Badge variant="outline" className="mt-1">
-                            {formatService(editedAgent.service)}
-                          </Badge>
-                        </div>
+                    <div>
+                      <h2 className="text-xl font-semibold">{editedAgent.name}</h2>
+                      <p className="text-gray-600">{getRoleLabel(editedAgent.role)}</p>
+                      {/* Debug: Afficher le rôle brut pour vérification */}
+                      <p className="text-xs text-gray-400">Rôle brut: {editedAgent.role}</p>
+                      <Badge variant="outline" className="mt-1">
+                        {formatService(editedAgent.service)}
+                      </Badge>
+                    </div>
                   )}
                 </div>
               </div>
@@ -888,6 +949,92 @@ const NewAgentDashboard = () => {
           </Card>
 
           {/* Droits de congés */}
+          {/* Carte d'utilisation des droits à congés */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-base">Utilisation de vos droits à congés</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {previousRights && (previousRights.ca > 0 || previousRights.rtt > 0) && (
+                <div className="mb-2 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                  <span className="font-semibold text-yellow-800">Droits n-1 :</span>
+                  {previousRights.ca > 0 && (
+                    <span className="ml-4 text-sm text-gray-700">CA restant : <span className="font-bold">{previousRights.ca} jours</span></span>
+                  )}
+                  {previousRights.rtt > 0 && (
+                    <span className="ml-4 text-sm text-gray-700">RTT restant : <span className="font-bold">{previousRights.rtt}h</span></span>
+                  )}
+                </div>
+              )}
+              {/* Barres horizontales */}
+              <div className="flex flex-col gap-3">
+                {/* CA */}
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">Congés payés (CA)</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {(() => {
+                        const agentRequests = getAgentRequests(agent);
+                        const caRequests = agentRequests.filter(req => req.leave_type === 'Congés payés' && req.status === 'approuve');
+                        const usedCADays = caRequests.reduce((sum, req) => sum + req.days_count, 0);
+                        return usedCADays;
+                      })()} jours
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div className="bg-green-500 h-3 rounded-full" style={{ width: `${(() => {
+                      const agentRequests = getAgentRequests(agent);
+                      const caRequests = agentRequests.filter(req => req.leave_type === 'Congés payés' && req.status === 'approuve');
+                      const usedCADays = caRequests.reduce((sum, req) => sum + req.days_count, 0);
+                      const totalCADays = editedAgent.congésAnnuel || 25;
+                      return Math.min(100, (usedCADays / totalCADays) * 100 || 0);
+                    })()}%` }}></div>
+                  </div>
+                </div>
+                {/* RTT */}
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">RTT</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {(() => {
+                        const rttSummary = calculateRTTSummary();
+                        return rttSummary.used;
+                      })()}h
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div className="bg-blue-500 h-3 rounded-full" style={{ width: `${(() => {
+                      const rttSummary = calculateRTTSummary();
+                      return Math.min(100, (rttSummary.used / (rttSummary.total || 1)) * 100);
+                    })()}%` }}></div>
+                  </div>
+                </div>
+                {/* Enfant malade */}
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">Journée enfant malade</span>
+                    <span className="text-sm font-semibold text-gray-900">
+                      {(() => {
+                        const agentRequests = getAgentRequests(agent);
+                        const enfantRequests = agentRequests.filter(req => req.leave_type.toLowerCase().includes('enfant') && req.status === 'approuve');
+                        const usedEnfantDays = enfantRequests.reduce((sum, req) => sum + req.days_count, 0);
+                        return usedEnfantDays;
+                      })()} jours
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div className="bg-pink-500 h-3 rounded-full" style={{ width: `${(() => {
+                      const agentRequests = getAgentRequests(agent);
+                      const enfantRequests = agentRequests.filter(req => req.leave_type.toLowerCase().includes('enfant') && req.status === 'approuve');
+                      const usedEnfantDays = enfantRequests.reduce((sum, req) => sum + req.days_count, 0);
+                      const totalEnfantDays = editedAgent.enfantMalade || 3;
+                      return Math.min(100, (usedEnfantDays / totalEnfantDays) * 100 || 0);
+                    })()}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -1222,6 +1369,8 @@ const NewAgentDashboard = () => {
       </div>
     </div>
   );
-};
+}
+
+}
 
 export default NewAgentDashboard;
