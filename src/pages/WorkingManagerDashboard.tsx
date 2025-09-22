@@ -14,18 +14,20 @@ const WorkingManagerDashboard = () => {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
 
-  // Données des agents du service (mock) - Équipe de Médecine (2 personnes)
+  // Données des agents du service (mock) - Équipe de Médecine (3 personnes)
+  // CORRECTION: agent1 = Sophie Bernard, agent3 = Nat Danede
   const serviceAgents = [
     { 
       id: '550e8400-e29b-41d4-a716-446655440003', 
-      name: 'Nat Danede', 
+      name: 'Sophie Bernard', 
       service: 'Médecine', 
-      role: 'Employé',
-      email: 'nat.danede@hopital.fr',
-      phone: '06 45 23 67 89',
-      hireDate: 'Mars 2022',
-      weeklyHours: 36,
-      rttDays: 6
+      role: 'Infirmière',
+      email: 'sophie.bernard@hopital.fr',
+      phone: '01.23.45.67.89',
+      hireDate: 'Janvier 2023',
+      weeklyHours: 35,
+      rttDays: 6,
+      username: 'agent1' // CORRECT: Sophie Bernard = agent1
     },
     { 
       id: '550e8400-e29b-41d4-a716-446655440004', 
@@ -36,7 +38,20 @@ const WorkingManagerDashboard = () => {
       phone: '06 12 34 56 82',
       hireDate: 'Juin 2023',
       weeklyHours: 36,
-      rttDays: 6
+      rttDays: 6,
+      username: 'agent2' // Antoine Rousseau = agent2
+    },
+    { 
+      id: '550e8400-e29b-41d4-a716-446655440005', 
+      name: 'Nat Danede', 
+      service: 'Médecine', 
+      role: 'Employé',
+      email: 'nat.danede@hopital.fr',
+      phone: '06 45 23 67 89',
+      hireDate: 'Mars 2022',
+      weeklyHours: 36,
+      rttDays: 6,
+      username: 'agent3' // CORRECT: Nat Danede = agent3
     }
   ];
 
@@ -155,56 +170,6 @@ const WorkingManagerDashboard = () => {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <Clock className="h-8 w-8 text-yellow-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">En attente</p>
-                  <p className="text-2xl font-semibold text-gray-900">3</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <CheckCircle className="h-8 w-8 text-green-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Approuvées</p>
-                  <p className="text-2xl font-semibold text-gray-900">12</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <XCircle className="h-8 w-8 text-red-600" />
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Refusées</p>
-                  <p className="text-2xl font-semibold text-gray-900">2</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center">
-                <div className="text-3xl mr-4">👥</div>
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Équipe</p>
-                  <p className="text-2xl font-semibold text-gray-900">2</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Pending Requests */}
         <div className="mb-8">
@@ -329,38 +294,6 @@ const WorkingManagerDashboard = () => {
           </Card>
         </div>
 
-        {/* Statistiques du mois - Horizontales */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Statistiques du mois</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{serviceAgents.length}</div>
-                <div className="text-sm text-gray-600">Équipe totale</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{leaveRequests.filter(req => req.status === 'approuve').length}</div>
-                <div className="text-sm text-gray-600">Demandes traitées</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">
-                  {leaveRequests.length > 0 ? Math.round((leaveRequests.filter(req => req.status === 'approuve').length / leaveRequests.length) * 100) : 0}%
-                </div>
-                <div className="text-sm text-gray-600">Taux d'approbation</div>
-              </div>
-              <div className="text-center p-4 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-600">1.2</div>
-                <div className="text-sm text-gray-600">Temps moyen (jours)</div>
-              </div>
-              <div className="text-center p-4 bg-teal-50 rounded-lg">
-                <div className="text-2xl font-bold text-teal-600">{leaveRequests.filter(req => req.status === 'approuve').reduce((total, req) => total + req.days_count, 0)}</div>
-                <div className="text-sm text-gray-600">Congés accordés</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Mon équipe - Deux colonnes */}
         <Card>
