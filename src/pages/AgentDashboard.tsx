@@ -20,6 +20,8 @@ import {
   CalendarDays
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import AgentPersonalInfo from "@/components/AgentPersonalInfo";
+import AgentLeaveRights from "@/components/AgentLeaveRights";
 
 interface LeaveRequest {
   id: string;
@@ -51,7 +53,10 @@ const AgentDashboard = () => {
     if (session) {
       try {
         const userData = JSON.parse(session);
-        if (userData.role === 'employe') {
+        // Accepter tous les rôles d'agents (employe, infirmiere, medecin, etc.)
+        const agentRoles = ['employe', 'infirmiere', 'medecin', 'dentiste', 'assistante_dentaire', 'rh', 'comptabilite', 'sage_femme'];
+        if (agentRoles.includes(userData.role)) {
+          console.log('Agent authorized with role:', userData.role);
           setUserSession(userData);
           loadLeaveRequests();
         } else {
@@ -209,6 +214,46 @@ const AgentDashboard = () => {
           </div>
         </div>
       </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Informations personnelles et droits de congés */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Informations personnelles */}
+            <AgentPersonalInfo 
+              agent={{
+                id: userSession.id,
+                name: userSession.name,
+                role: userSession.role,
+                service: userSession.service,
+                email: userSession.email,
+                phone: userSession.phone,
+                hireDate: userSession.hireDate,
+                weeklyHours: userSession.weeklyHours,
+                rttDays: userSession.rttDays,
+                specialization: userSession.specialization
+              }}
+              showFullInfo={true}
+            />
+            
+            {/* Droits de congés */}
+            <AgentLeaveRights 
+              agent={{
+                id: userSession.id,
+                name: userSession.name,
+                role: userSession.role,
+                weeklyHours: userSession.weeklyHours,
+                rttDays: userSession.rttDays,
+                congésAnnuel: userSession.congésAnnuel,
+                heuresFormation: userSession.heuresFormation,
+                enfantMalade: userSession.enfantMalade
+              }}
+              leaveRequests={leaveRequests}
+              showDetails={true}
+            />
+          </div>
+        </div>
+        {/* Stats Cards */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}

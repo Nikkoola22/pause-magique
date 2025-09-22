@@ -11,6 +11,8 @@ import { LogOut, Calendar, Plus, CheckCircle, XCircle, Clock, BarChart3, Gift, A
 import ReadOnlySchedule from "@/components/ReadOnlySchedule";
 import CalendarPicker from "@/components/CalendarPicker";
 import AgentScheduleSection from "@/components/AgentScheduleSection";
+import AgentPersonalInfo from "@/components/AgentPersonalInfo";
+import AgentLeaveRights from "@/components/AgentLeaveRights";
 
 const WorkingAgentDashboard = () => {
   const [userSession, setUserSession] = useState<any>(null);
@@ -264,16 +266,6 @@ const WorkingAgentDashboard = () => {
     
   const remainingDays = totalDays - usedDays - pendingDays;
 
-  const leaveConsumption = {
-    totalDays,
-    usedDays,
-    pendingDays,
-    rejectedDays,
-    remainingDays
-  };
-
-  const consumptionPercentage = (leaveConsumption.usedDays / leaveConsumption.totalDays) * 100;
-  const pendingPercentage = (leaveConsumption.pendingDays / leaveConsumption.totalDays) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -373,204 +365,42 @@ const WorkingAgentDashboard = () => {
         </div>
 
 
-        {/* Leave Consumption Visualization */}
+
+        {/* Informations personnelles et droits de congés */}
         <div className="mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Consommation des congés 2024
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">Progression de vos congés</span>
-                    <span className="text-gray-600">
-                      {leaveConsumption.usedDays + leaveConsumption.pendingDays} / {leaveConsumption.totalDays} jours
-                    </span>
-                  </div>
-                  
-                  {/* Barre de progression avec couleurs */}
-                  <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden">
-                    {/* Congés utilisés (vert) */}
-                    <div 
-                      className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-500 ease-out"
-                      style={{ width: `${consumptionPercentage}%` }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-green-400 to-green-600 opacity-90"></div>
-                    </div>
-                    
-                    {/* Congés en attente (jaune) */}
-                    <div 
-                      className="absolute top-0 h-full bg-yellow-500 transition-all duration-500 ease-out"
-                      style={{ 
-                        left: `${consumptionPercentage}%`, 
-                        width: `${pendingPercentage}%` 
-                      }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-yellow-600 opacity-90"></div>
-                    </div>
-                    
-                    {/* Reste disponible (gris clair) */}
-                    <div 
-                      className="absolute top-0 h-full bg-gray-300"
-                      style={{ 
-                        left: `${consumptionPercentage + pendingPercentage}%`, 
-                        width: `${100 - consumptionPercentage - pendingPercentage}%` 
-                      }}
-                    ></div>
-                  </div>
-                  
-                  {/* Légende */}
-                  <div className="flex flex-wrap gap-4 text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded"></div>
-                      <span>Utilisés ({leaveConsumption.usedDays} jours)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                      <span>En attente ({leaveConsumption.pendingDays} jours)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-gray-300 rounded"></div>
-                      <span>Disponibles ({leaveConsumption.remainingDays} jours)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Détails numériques */}
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{leaveConsumption.usedDays}</div>
-                    <div className="text-sm text-gray-600">Utilisés</div>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                    <div className="text-2xl font-bold text-yellow-600">{leaveConsumption.pendingDays}</div>
-                    <div className="text-sm text-gray-600">En attente</div>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">{leaveConsumption.rejectedDays}</div>
-                    <div className="text-sm text-gray-600">Refusés</div>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{leaveConsumption.remainingDays}</div>
-                    <div className="text-sm text-gray-600">Disponibles</div>
-                  </div>
-                  
-                  <div className="text-center p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl font-bold text-gray-600">{leaveConsumption.totalDays}</div>
-                    <div className="text-sm text-gray-600">Total</div>
-                  </div>
-                </div>
-
-                {/* Conseils */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-900 mb-2">💡 Conseils</h4>
-                  <ul className="text-sm text-blue-800 space-y-1">
-                    <li>• Vous avez utilisé {consumptionPercentage.toFixed(0)}% de vos congés annuels ({usedDays} jours)</li>
-                    <li>• Il vous reste {leaveConsumption.remainingDays} jours de congés disponibles</li>
-                    <li>• Vous avez {pendingDays} jour{pendingDays > 1 ? 's' : ''} de congés en attente d'approbation</li>
-                    {rejectedDays > 0 && (
-                      <li>• {rejectedDays} jour{rejectedDays > 1 ? 's' : ''} de congés ont été refusés (non comptabilisés)</li>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Droits de congés - CA et RTT */}
-        <div className="mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Carte Congés Annuels */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Gift className="h-5 w-5" />
-                  Congés Annuels (CA)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const leaveSummary = calculateLeaveSummary();
-                  return (
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-600">{leaveSummary.ca.total}</div>
-                        <div className="text-sm text-gray-500">jours par an</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Utilisés</span>
-                          <span className="font-semibold text-red-600">{leaveSummary.ca.used} jours</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Restants</span>
-                          <span className="font-semibold text-green-600">{leaveSummary.ca.remaining} jours</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${(leaveSummary.ca.used / leaveSummary.ca.total) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
-
-            {/* Carte RTT */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Récupération (RTT)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-                  const leaveSummary = calculateLeaveSummary();
-                  return (
-                    <div className="space-y-4">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-green-600">{leaveSummary.rtt.total}h</div>
-                        <div className="text-sm text-gray-500">heures par an</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Utilisées</span>
-                          <span className="font-semibold text-red-600">{leaveSummary.rtt.used}h</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">Restantes</span>
-                          <span className="font-semibold text-green-600">{leaveSummary.rtt.remaining}h</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-                            style={{ width: `${leaveSummary.rtt.total > 0 ? (leaveSummary.rtt.used / leaveSummary.rtt.total) * 100 : 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      {leaveSummary.rtt.total === 0 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          Pas de RTT (35h/semaine)
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Informations personnelles */}
+            <AgentPersonalInfo 
+              agent={{
+                id: userSession.id,
+                name: userSession.name,
+                role: userSession.role,
+                service: userSession.service,
+                email: userSession.email,
+                phone: userSession.phone,
+                hireDate: userSession.hireDate,
+                weeklyHours: userSession.weeklyHours,
+                rttDays: userSession.rttDays,
+                specialization: userSession.specialization
+              }}
+              showFullInfo={true}
+            />
+            
+            {/* Droits de congés */}
+            <AgentLeaveRights 
+              agent={{
+                id: userSession.id,
+                name: userSession.name,
+                role: userSession.role,
+                weeklyHours: userSession.weeklyHours,
+                rttDays: userSession.rttDays,
+                congésAnnuel: userSession.congésAnnuel,
+                heuresFormation: userSession.heuresFormation,
+                enfantMalade: userSession.enfantMalade
+              }}
+              leaveRequests={agentRequests}
+              showDetails={true}
+            />
           </div>
         </div>
 
