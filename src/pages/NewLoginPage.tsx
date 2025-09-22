@@ -26,12 +26,13 @@ const NewLoginPage = () => {
     setIsLoading(true);
     
     // Vérification locale temporaire pour les utilisateurs de test
+    // CORRECTION: agent1 = Sophie Bernard, agent3 = Nat Danede
     const testUsers: Record<string, any> = {
       'admin': { role: 'admin', password: 'password', name: 'Administrateur', id: '550e8400-e29b-41d4-a716-446655440012' },
       'resp.medecine': { role: 'chef_service', password: 'password', name: 'Dr. Martin Dubois', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440009' },
-      'agent1': { role: 'employe', password: 'password', name: 'Nat Danede', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440003', email: 'nat.danede@hopital.fr', phone: '06 45 23 67 89' },
+      'agent1': { role: 'infirmiere', password: 'password', name: 'Sophie Bernard', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440003', email: 'sophie.bernard@hopital.fr', phone: '01.23.45.67.89' },
       'agent2': { role: 'medecin', password: 'password', name: 'Antoine Rousseau', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440004', email: 'antoine.rousseau@hopital.fr', phone: '06 12 34 56 82' },
-      'agent3': { role: 'employe', password: 'password', name: 'Nat Danede', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440003', email: 'nat.danede@hopital.fr', phone: '06 45 23 67 89' }
+      'agent3': { role: 'employe', password: 'password', name: 'Nat Danede', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440005', email: 'nat.danede@hopital.fr', phone: '06 45 23 67 89' }
     };
 
     const user = testUsers[userCredentials.username];
