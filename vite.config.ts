@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode } ) => ({
-  base: "/pause-magique/", // Ajouté pour le déploiement sur GitHub Pages
+  base: mode === "production" ? "/pause-magique/" : "/", // Base URL conditionnelle
   server: {
     host: "::",
     port: 8080,
