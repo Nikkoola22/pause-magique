@@ -30,52 +30,62 @@ const AgentScheduleSection = ({ agent }: AgentScheduleSectionProps) => {
     return `${agentId}_${year}-${month}-${day}`;
   };
 
-  // Charger TOUS les plannings disponibles avec migration automatique
+  // Charger TOUS les plannings disponibles avec migration automatique et synchronisation améliorée
   useEffect(() => {
     const loadAllPlannings = () => {
-      // Essayer d'abord weeklySchedules
-      let localData = localStorage.getItem('weeklySchedules');
+      console.log('🔄 Chargement des plannings pour l\'agent:', agent?.id);
       
-      // Si weeklySchedules est vide ou n'existe pas, essayer savedSchedules et migrer
-      if (!localData || localData === '{}') {
-        const oldData = localStorage.getItem('savedSchedules');
-        if (oldData && oldData !== '{}') {
-          console.log('🔄 Migration automatique des plannings...');
-          try {
-            const oldParsed = JSON.parse(oldData);
-            // Sauvegarder dans weeklySchedules
-            localStorage.setItem('weeklySchedules', JSON.stringify(oldParsed));
-            localData = JSON.stringify(oldParsed);
-            console.log('✅ Migration terminée');
-          } catch (error) {
-            console.error('❌ Erreur migration:', error);
-          }
-        }
+      // Fusionner tous les plannings disponibles
+      const savedSchedulesData = JSON.parse(localStorage.getItem('savedSchedules') || '{}');
+      const weeklySchedulesData = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+      
+      // Fusionner les deux sources de données
+      const allPlannings = { ...savedSchedulesData, ...weeklySchedulesData };
+      
+      // Sauvegarder la version fusionnée dans weeklySchedules
+      if (Object.keys(allPlannings).length > 0) {
+        localStorage.setItem('weeklySchedules', JSON.stringify(allPlannings));
+        console.log('✅ Plannings fusionnés et sauvegardés');
       }
       
-      if (localData && localData !== '{}') {
-        try {
-          const parsed = JSON.parse(localData);
-          setSavedSchedules(parsed);
+      setSavedSchedules(allPlannings);
+      
+      // Charger TOUS les plannings disponibles pour cet agent avec recherche étendue
+      if (agent?.id) {
+        console.log('🔍 Recherche des plannings pour l\'agent:', agent.id);
+        
+        // Recherche étendue : chercher par ID exact, par début d'ID, et par correspondance partielle
+        const agentKeys = Object.keys(allPlannings).filter(key => {
+          const keyAgentId = key.split('_')[0];
+          return keyAgentId === agent.id || 
+                 key.startsWith(agent.id + '_') || 
+                 key.includes(agent.id);
+        }).sort();
+        
+        console.log('📊 Clés trouvées:', agentKeys);
+        
+        if (agentKeys.length > 0) {
+          // Charger le planning le plus récent par défaut
+          const mostRecentKey = agentKeys[agentKeys.length - 1];
+          const mostRecentPlanning = allPlannings[mostRecentKey];
+          setCurrentWeekSchedule(mostRecentPlanning);
+          setCurrentWeekKey(mostRecentKey);
+          console.log(`✅ Planning chargé: ${agentKeys.length} plannings disponibles`);
+          console.log(`📅 Planning actuel: ${mostRecentKey} (${mostRecentPlanning?.length || 0} créneaux)`);
           
-          // Charger TOUS les plannings disponibles pour cet agent
-          if (agent?.id) {
-            const agentKeys = Object.keys(parsed).filter(k => k.includes(agent.id)).sort();
-            
-            if (agentKeys.length > 0) {
-              // Charger le planning le plus récent par défaut
-              const mostRecentKey = agentKeys[agentKeys.length - 1];
-              const mostRecentPlanning = parsed[mostRecentKey];
-              setCurrentWeekSchedule(mostRecentPlanning);
-              setCurrentWeekKey(mostRecentKey);
-              console.log(`✅ Planning chargé: ${agentKeys.length} plannings disponibles`);
-            } else {
-              setCurrentWeekSchedule([]);
-              setCurrentWeekKey('');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Erreur lors du chargement des plannings:', error);
+          // Déclencher un événement pour notifier que les plannings sont disponibles
+          window.dispatchEvent(new CustomEvent('agentPlanningsLoaded', { 
+            detail: { agentId: agent.id, count: agentKeys.length, keys: agentKeys } 
+          }));
+        } else {
+          setCurrentWeekSchedule([]);
+          setCurrentWeekKey('');
+          console.log('❌ Aucun planning trouvé pour cet agent');
+          
+          // Déclencher un événement pour notifier qu'aucun planning n'est disponible
+          window.dispatchEvent(new CustomEvent('agentPlanningsNotFound', { 
+            detail: { agentId: agent.id } 
+          }));
         }
       }
     };
@@ -84,11 +94,26 @@ const AgentScheduleSection = ({ agent }: AgentScheduleSectionProps) => {
 
     // Écouter les événements de mise à jour
     const handlePlanningUpdate = () => {
+      console.log('🔄 Événement de mise à jour reçu, rechargement des plannings...');
+      loadAllPlannings();
+    };
+
+    const handlePlanningsUpdated = () => {
+      console.log('🔄 Événement planningsUpdated reçu, rechargement des plannings...');
       loadAllPlannings();
     };
 
     window.addEventListener('planningUpdated', handlePlanningUpdate);
-    return () => window.removeEventListener('planningUpdated', handlePlanningUpdate);
+    window.addEventListener('planningsUpdated', handlePlanningsUpdated);
+    window.addEventListener('agentPlanningsLoaded', handlePlanningUpdate);
+    window.addEventListener('agentPlanningsNotFound', handlePlanningUpdate);
+    
+    return () => {
+      window.removeEventListener('planningUpdated', handlePlanningUpdate);
+      window.removeEventListener('planningsUpdated', handlePlanningsUpdated);
+      window.removeEventListener('agentPlanningsLoaded', handlePlanningUpdate);
+      window.removeEventListener('agentPlanningsNotFound', handlePlanningUpdate);
+    };
   }, [agent?.id]);
 
   if (!agent?.id) {

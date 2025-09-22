@@ -323,6 +323,69 @@ const UserManagementSupabase = () => {
 
       setUsers([...users, newUserWithExtras]);
       
+      // 🔄 SYNCHRONISATION AUTOMATIQUE AVEC LOCALSTORAGE
+      console.log('🔄 Synchronisation automatique avec localStorage...');
+      
+      // Créer les données agent dans localStorage
+      const agentStorageData = {
+        id: data.id,
+        name: data.full_name,
+        username: `agent_${data.id.substring(0, 8)}`,
+        role: data.role,
+        service: data.service,
+        email: data.email,
+        phone: data.phone,
+        hireDate: data.hire_date,
+        weeklyHours: createFormData.weeklyHours,
+        rttDays: calculateRTT(createFormData.weeklyHours),
+        specialization: createFormData.specialization || undefined
+      };
+      
+      // Sauvegarder dans localStorage
+      localStorage.setItem(`agent_${data.id}_hours`, JSON.stringify(agentStorageData));
+      console.log('✅ Données agent sauvegardées dans localStorage');
+      
+      // Créer un planning par défaut
+      const weeklySchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay() + 1); // Lundi de cette semaine
+      
+      const year = weekStart.getFullYear();
+      const month = String(weekStart.getMonth() + 1).padStart(2, '0');
+      const day = String(weekStart.getDate()).padStart(2, '0');
+      const weekKey = `${data.id}_${year}-${month}-${day}`;
+      
+      const defaultSchedule = [
+        { day: 'Lundi', time: 'Matin', status: 'working', startTime: '08:00', endTime: '12:00' },
+        { day: 'Lundi', time: 'Midi', status: 'break', startTime: '12:00', endTime: '13:00' },
+        { day: 'Lundi', time: 'Après-midi', status: 'working', startTime: '13:00', endTime: '17:00' },
+        { day: 'Mardi', time: 'Matin', status: 'working', startTime: '08:00', endTime: '12:00' },
+        { day: 'Mardi', time: 'Midi', status: 'break', startTime: '12:00', endTime: '13:00' },
+        { day: 'Mardi', time: 'Après-midi', status: 'working', startTime: '13:00', endTime: '17:00' },
+        { day: 'Mercredi', time: 'Matin', status: 'working', startTime: '08:00', endTime: '12:00' },
+        { day: 'Mercredi', time: 'Midi', status: 'break', startTime: '12:00', endTime: '13:00' },
+        { day: 'Mercredi', time: 'Après-midi', status: 'working', startTime: '13:00', endTime: '17:00' },
+        { day: 'Jeudi', time: 'Matin', status: 'working', startTime: '08:00', endTime: '12:00' },
+        { day: 'Jeudi', time: 'Midi', status: 'break', startTime: '12:00', endTime: '13:00' },
+        { day: 'Jeudi', time: 'Après-midi', status: 'working', startTime: '13:00', endTime: '17:00' },
+        { day: 'Vendredi', time: 'Matin', status: 'working', startTime: '08:00', endTime: '12:00' },
+        { day: 'Vendredi', time: 'Midi', status: 'break', startTime: '12:00', endTime: '13:00' },
+        { day: 'Vendredi', time: 'Après-midi', status: 'working', startTime: '13:00', endTime: '17:00' }
+      ];
+      
+      weeklySchedules[weekKey] = defaultSchedule;
+      localStorage.setItem('weeklySchedules', JSON.stringify(weeklySchedules));
+      console.log(`✅ Planning par défaut créé: ${weekKey}`);
+      
+      // Déclencher les événements de synchronisation
+      window.dispatchEvent(new CustomEvent('agentCreated', { 
+        detail: { agent: data, storageData: agentStorageData } 
+      }));
+      window.dispatchEvent(new CustomEvent('planningsUpdated'));
+      window.dispatchEvent(new CustomEvent('agentDataUpdated'));
+      console.log('✅ Événements de synchronisation déclenchés');
+      
       // Reset form
       setCreateFormData({
         full_name: '',
@@ -335,7 +398,7 @@ const UserManagementSupabase = () => {
         weeklyHours: 35
       });
       setShowCreateForm(false);
-      console.log('Utilisateur créé avec succès');
+      console.log('✅ Utilisateur créé et synchronisé avec succès');
     } catch (error) {
       console.error('Erreur:', error);
       alert('Erreur lors de la création de l\'utilisateur');
