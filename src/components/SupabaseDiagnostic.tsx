@@ -145,3 +145,7 @@ const SupabaseDiagnostic = () => {
 };
 
 export default SupabaseDiagnostic;
+
+
+
+

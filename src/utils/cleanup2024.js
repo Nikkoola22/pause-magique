@@ -32,3 +32,7 @@ if (localData) {
 } else {
   console.log('⚠️ Aucune donnée trouvée dans localStorage');
 }
+
+
+
+

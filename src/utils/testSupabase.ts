@@ -65,3 +65,7 @@ export const runSupabaseTests = async () => {
   await checkSupabaseData();
   console.log('✅ Tests Supabase terminés');
 };
+
+
+
+
