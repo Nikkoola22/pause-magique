@@ -146,3 +146,5 @@ console.log('- Nettoyage du code source WorkingManagerDashboard.tsx');
 console.log('\n✅ VÉRIFICATION TERMINÉE');
 console.log('La section "Statistiques du mois" a été supprimée du dashboard responsable');
 console.log('Cliquez sur "DASHBOARD RESPONSABLE" pour vérifier');
+
+

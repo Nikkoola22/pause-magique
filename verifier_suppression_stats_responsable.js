@@ -128,3 +128,5 @@ console.log('- Nettoyage du code source WorkingManagerDashboard.tsx');
 console.log('\n✅ VÉRIFICATION TERMINÉE');
 console.log('Les cartes statistiques ont été supprimées du dashboard responsable');
 console.log('Cliquez sur "DASHBOARD RESPONSABLE" pour vérifier');
+
+
