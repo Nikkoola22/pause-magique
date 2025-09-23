@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch: # Permet de déclencher le workflow manuellement
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -24,13 +24,21 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create .nojekyll file
-        run: touch ./dist/.nojekyll
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          publish_branch: gh-pages # Pousser vers la branche gh-pages
-          # destination_dir: docs # Supprimer cette ligne
+          path: './dist' # Le dossier contenant les fichiers construits
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v3
