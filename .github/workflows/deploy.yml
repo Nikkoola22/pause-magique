@@ -1,12 +1,12 @@
-name: Deploy Vite App to GitHub Pages
+name: Deploy Vite React App to GitHub Pages
 
 on:
   push:
     branches:
-      - main  # déploie quand tu pousses sur la branche main
+      - main  # Déploie à chaque push sur main
 
 jobs:
-  build-deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,13 +19,15 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build project
+      - name: Build the project
         run: npm run build
 
       - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          branch: gh-pages   # Branche de déploiement
-          folder: dist       # Dossier de build (dist par défaut avec Vite)
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist   # ← C’est le dossier généré par npm run build
+          user_name: "Nikkoola22"
+          user_email: "nikkoola22@example.com"
