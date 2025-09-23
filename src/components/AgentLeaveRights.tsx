@@ -178,3 +178,5 @@ const AgentLeaveRights: React.FC<AgentLeaveRightsProps> = ({
 };
 
 export default AgentLeaveRights;
+
+
