@@ -3,31 +3,42 @@ name: Deploy Vite React App to GitHub Pages
 on:
   push:
     branches:
-      - main  # Déploie à chaque push sur main
+      - main  # Déploiement à chaque push sur main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      # 1. Checkout du code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 2. Installer Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3. Installer les dépendances
       - name: Install dependencies
         run: npm ci
 
-      - name: Build the project
+      # 4. Build du projet Vite
+      - name: Build project
         run: npm run build
 
+      # 5. Déployer sur GitHub Pages
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist   # ← C’est le dossier généré par npm run build
+          github_token: ${{ secrets.apimagique }}  # Ton PAT
+          publish_dir: ./dist                           # Dossier de build
           user_name: "Nikkoola22"
           user_email: "nikkoola22@example.com"
+          keep_files: true                              # Garde les fichiers précédents
