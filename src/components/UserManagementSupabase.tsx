@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Trash2, Edit, Plus, Save, X, RotateCcw, Database } from 'lucide-react';
+import { Trash2, Edit, Plus, Save, X, RotateCcw, Database as DatabaseIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -595,7 +595,7 @@ const UserManagementSupabase = () => {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="text-center">
-          <Database className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <DatabaseIcon className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
           <p>Chargement des utilisateurs depuis Supabase...</p>
         </div>
       </div>
@@ -619,7 +619,7 @@ const UserManagementSupabase = () => {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-blue-600" />
+              <DatabaseIcon className="h-5 w-5 text-blue-600" />
               Gestion des Utilisateurs (Supabase)
             </CardTitle>
             <div className="flex gap-2">
@@ -864,7 +864,7 @@ const UserManagementSupabase = () => {
               <div className="text-center py-8 text-gray-500">
                 {users.length === 0 ? (
                   <div className="space-y-4">
-                    <Database className="h-12 w-12 text-gray-400 mx-auto" />
+                    <DatabaseIcon className="h-12 w-12 text-gray-400 mx-auto" />
                     <h3 className="text-lg font-semibold text-gray-700">Aucun utilisateur dans Supabase</h3>
                     <p className="text-gray-500">
                       Utilisez le panneau de migration ci-dessus pour transférer les données locales vers Supabase.
