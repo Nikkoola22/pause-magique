@@ -141,7 +141,7 @@ const NewLoginPage = () => {
           <CardContent className="text-xs space-y-2">
             <div className="flex items-center gap-2">
               <Shield className="w-3 h-3 text-red-500" />
-              <span><strong>Admin:</strong> admin / password</span>
+              <span><strong>Admin:</strong> admin / test</span>
             </div>
             <div className="flex items-center gap-2">
               <UserCheck className="w-3 h-3 text-blue-500" />
