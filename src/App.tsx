@@ -16,12 +16,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  // Determine basename based on environment
+  const basename = import.meta.env.MODE === 'production' ? '/pause-magique' : '/';
+  
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter
+        basename={basename}
         future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true
@@ -42,6 +47,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
