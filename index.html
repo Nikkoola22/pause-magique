@@ -20,8 +20,23 @@
       (function() {
         var redirect = sessionStorage.redirect;
         delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, null, redirect);
+        if (redirect && redirect !== location.pathname + location.search + location.hash) {
+          // Remove base path if present to get the relative path
+          var basePath = '/pause-magique';
+          var path = redirect;
+          if (redirect.startsWith(basePath)) {
+            path = redirect.substring(basePath.length);
+          }
+          // Ensure path starts with /
+          if (!path.startsWith('/')) {
+            path = '/' + path;
+          }
+          // Remove query string and hash for path, keep them in the URL
+          var pathOnly = path.split('?')[0].split('#')[0];
+          var search = redirect.includes('?') ? '?' + redirect.split('?')[1].split('#')[0] : '';
+          var hash = redirect.includes('#') ? '#' + redirect.split('#')[1] : '';
+          
+          history.replaceState(null, null, pathOnly + search + hash);
         }
       })();
     </script>
