@@ -29,5 +29,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
-          publish_branch: main # Pousser vers la branche main
-          destination_dir: docs # Dans le sous-dossier docs
