@@ -333,7 +333,6 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
       alert('Veuillez sélectionner un agent');
       return;
     }
-    
     console.log('🚀 DEBUT handleSaveSchedule');
     console.log('📋 Données de sauvegarde:', {
       agentId: selectedAgent,
@@ -342,88 +341,54 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
       repeatWeekly: repeatWeekly,
       selectedDate: selectedDate
     });
-    
-    try {
-      const newSavedSchedules = { ...savedSchedules };
-      
-      if (repeatWeekly) {
-        // NOUVELLE LOGIQUE SIMPLIFIÉE POUR LA RÉPÉTITION
-        console.log('🗓️ RÉPÉTITION HEBDOMADAIRE ACTIVÉE');
-        
-        // Créer le planning pour toutes les semaines FUTURES de l'année 2025
-        const targetYear = 2025; // Toujours 2025
-        const startOfYear = new Date(targetYear, 0, 1); // 1er janvier 2025
-        
-        // Calculer le lundi de la première semaine de l'année 2025
-        const firstMonday = new Date(startOfYear);
-        const dayOfWeek = firstMonday.getDay();
-        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        firstMonday.setDate(firstMonday.getDate() + daysToMonday);
-        
-        // Calculer la semaine actuelle (celle qu'on est en train de modifier)
-        const currentWeekStart = new Date(selectedDate);
-        const currentDayOfWeek = currentWeekStart.getDay();
-        const currentDaysToMonday = currentDayOfWeek === 0 ? -6 : 1 - currentDayOfWeek;
-        currentWeekStart.setDate(currentWeekStart.getDate() + currentDaysToMonday);
-        
-        console.log('📅 Première semaine de l\'année 2025:', firstMonday.toLocaleDateString());
-        console.log('📅 Semaine actuelle (modification):', currentWeekStart.toLocaleDateString());
-        
-        // Créer les plannings à partir de la semaine actuelle jusqu'à la fin de l'année
-        let weeksUpdated = 0;
-        for (let week = 0; week < 52; week++) {
-          const weekDate = new Date(firstMonday);
-          weekDate.setDate(firstMonday.getDate() + (week * 7));
-          
-          // Ne modifier que les semaines futures ou la semaine actuelle
-          if (weekDate >= currentWeekStart) {
-            const key = getScheduleKey(selectedAgent, weekDate);
-            newSavedSchedules[key] = [...schedule]; // Copie du planning modifié
-            weeksUpdated++;
-            
-            if (weeksUpdated <= 5) { // Log seulement les 5 premières semaines modifiées
-              console.log(`📅 Semaine ${week + 1} 2025 (FUTURE): ${key}`);
+    const newSavedSchedules = { ...savedSchedules };
+    const supabaseSync = async () => {
+      try {
+        const { saveAgentPlanning } = await import("../lib/agentPlanningApi");
+        if (repeatWeekly) {
+          const targetYear = 2025;
+          const startOfYear = new Date(targetYear, 0, 1);
+          const currentWeekStart = new Date(selectedDate);
+          currentWeekStart.setDate(currentWeekStart.getDate() - (currentWeekStart.getDay() === 0 ? 6 : currentWeekStart.getDay() - 1));
+          let weeksUpdated = 0;
+          for (let week = 0; week < 52; week++) {
+            const weekDate = new Date(startOfYear);
+            weekDate.setDate(startOfYear.getDate() + (week * 7));
+            if (weekDate >= currentWeekStart) {
+              const key = getScheduleKey(selectedAgent, weekDate);
+              newSavedSchedules[key] = [...schedule];
+              weeksUpdated++;
+              await saveAgentPlanning(selectedAgent, key, schedule);
+              if (weeksUpdated <= 5) {
+                console.log(`📅 Semaine ${week + 1} 2025 (FUTURE): ${key}`);
+              }
             }
           }
+          console.log(`✅ ${weeksUpdated} plannings FUTURS mis à jour pour l'année 2025`);
+        } else {
+          const key = getScheduleKey(selectedAgent, selectedDate);
+          newSavedSchedules[key] = [...schedule];
+          console.log('💾 Planning sauvegardé pour cette semaine:', key);
+          await saveAgentPlanning(selectedAgent, key, schedule);
         }
-        
-        console.log(`✅ ${weeksUpdated} plannings FUTURS mis à jour pour l'année 2025`);
-        
-      } else {
-        // Sauvegarder seulement la semaine actuelle
-        const key = getScheduleKey(selectedAgent, selectedDate);
-        newSavedSchedules[key] = [...schedule];
-        console.log('💾 Planning sauvegardé pour cette semaine:', key);
+        localStorage.setItem('weeklySchedules', JSON.stringify(newSavedSchedules));
+        setSavedSchedules(newSavedSchedules);
+        setViewMode('view');
+        setRepeatWeekly(false);
+        window.dispatchEvent(new CustomEvent('planningUpdated', { 
+          detail: { agentId: selectedAgent, date: selectedDate, repeatWeekly } 
+        }));
+        const message = repeatWeekly 
+          ? `Planning sauvegardé et appliqué aux semaines futures de l'année 2025 !`
+          : 'Planning sauvegardé avec succès !';
+        alert(message);
+      } catch (error: any) {
+        console.error('❌ Erreur lors de la sauvegarde Supabase:', error);
+        const errorMessage = error?.message || error?.toString() || 'Erreur inconnue';
+        alert(`Erreur lors de la sauvegarde du planning:\n${errorMessage}`);
       }
-      
-      // Sauvegarder dans localStorage
-      localStorage.setItem('weeklySchedules', JSON.stringify(newSavedSchedules));
-      console.log('💾 Données sauvegardées dans localStorage');
-      console.log('📊 Total de plannings sauvegardés:', Object.keys(newSavedSchedules).length);
-      console.log('📋 Clés sauvegardées pour cet agent:', Object.keys(newSavedSchedules).filter(k => k.includes(selectedAgent)));
-      
-      // Mettre à jour l'état
-      setSavedSchedules(newSavedSchedules);
-      
-      // Passer en mode VIEW
-      setViewMode('view');
-      setRepeatWeekly(false);
-      
-      // Émettre l'événement
-      window.dispatchEvent(new CustomEvent('planningUpdated', { 
-        detail: { agentId: selectedAgent, date: selectedDate, repeatWeekly } 
-      }));
-      
-      const message = repeatWeekly 
-        ? `Planning sauvegardé et appliqué aux semaines futures de l'année 2025 !`
-        : 'Planning sauvegardé avec succès !';
-      
-      alert(message);
-      
-    } catch (error) {
-      console.error('❌ Erreur lors de la sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde du planning.');
-    }
+    };
+    supabaseSync();
   };
 
   // Charger les plannings sauvegardés au démarrage

@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { applyLeaveToSchedule, cancelLeaveFromSchedule, ScheduleSlot } from "@/utils/leaveRequestUtils";
 
 interface LeaveRequest {
   id: string;
@@ -24,6 +25,9 @@ interface LeaveRequest {
   start_date: string;
   end_date: string;
   days_count: number;
+  rtt_hours?: number;
+  start_time?: string;
+  end_time?: string;
   reason?: string;
   status: 'en_attente' | 'approuve' | 'refuse';
   created_at: string;
@@ -41,6 +45,7 @@ const ManagerDashboard = () => {
   const [userSession, setUserSession] = useState<any>(null);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [schedules, setSchedules] = useState<{ [key: string]: ScheduleSlot[] }>({});
 
   useEffect(() => {
     const session = sessionStorage.getItem('user_session');
@@ -118,8 +123,57 @@ const ManagerDashboard = () => {
     console.log('📝 Équipe vide - aucune donnée mock chargée');
   };
 
+  // Charger les plannings au démarrage
+  const loadSchedules = () => {
+    const saved = localStorage.getItem('weeklySchedules');
+    if (saved) {
+      try {
+        setSchedules(JSON.parse(saved));
+      } catch (error) {
+        console.error('Erreur lors du chargement des plannings:', error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadSchedules();
+  }, []);
+
   const handleApproveRequest = (requestId: string) => {
     console.log('✅ Approuver la demande:', requestId);
+    
+    // Trouver la demande concernée
+    const approvedRequest = leaveRequests.find(req => req.id === requestId);
+    if (!approvedRequest) {
+      console.error('Demande non trouvée:', requestId);
+      return;
+    }
+
+    // Obtenir l'ID agent depuis agent_id (priorité) ou employee_name
+    let agentId = (approvedRequest as any).agent_id || approvedRequest.employee_name;
+    
+    console.log('👤 Agent ID pour planning:', agentId);
+    
+    // Vérifier quand même dans agents_list pour la cohérence
+    const agents = JSON.parse(localStorage.getItem('agents_list') || '[]');
+    let agent = agents.find((a: any) => a.id === agentId || a.name === approvedRequest.employee_name);
+    
+    if (!agent) {
+      console.warn('⚠️ Agent non trouvé dans agents_list, utilisation de l\'ID:', agentId);
+      // Créer un agent temporaire
+      agent = {
+        id: agentId,
+        name: approvedRequest.employee_name
+      };
+    }
+
+    // Créer une version approuvée de la demande pour applyLeaveToSchedule
+    const approvedLeaveRequest = {
+      ...approvedRequest,
+      status: 'approuve' as const
+    };
+
+    // Mettre à jour la demande dans leaveRequests
     setLeaveRequests(prev => {
       const updated = prev.map(req => 
         req.id === requestId 
@@ -134,10 +188,18 @@ const ManagerDashboard = () => {
       
       return updated;
     });
-    
+
+    // Appliquer le congé au planning avec la demande approuvée
+    if (agent && agent.id) {
+      const currentSchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+      const updatedSchedules = applyLeaveToSchedule(agent.id, approvedLeaveRequest, currentSchedules);
+      setSchedules(updatedSchedules);
+      console.log('📅 Congé appliqué au planning de:', agent.name);
+    }
+
     toast({
       title: "Demande approuvée",
-      description: "La demande de congé a été approuvée.",
+      description: `La demande de congé a été approuvée et le planning a été mis à jour.`,
     });
   };
 
@@ -216,8 +278,8 @@ const ManagerDashboard = () => {
           visibility: 'visible',
           opacity: '1'
         }}
-        onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
-        onMouseOut={(e) => e.target.style.backgroundColor = '#10b981'}
+        onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#059669'}
+        onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#10b981'}
       >
         🔄 ACTUALISER
       </button>
@@ -324,8 +386,8 @@ const ManagerDashboard = () => {
               visibility: 'visible',
               opacity: '1'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+            onMouseOver={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#2563eb'}
+            onMouseOut={(e) => (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#3b82f6'}
           >
             🔄 Actualiser toutes les demandes
           </button>
@@ -393,6 +455,16 @@ const ManagerDashboard = () => {
                                 <div>
                                   <span className="font-medium">Durée:</span> {request.days_count} jour(s)
                                 </div>
+                                {request.leave_type === 'RTT' && request.rtt_hours && (
+                                  <div>
+                                    <span className="font-medium">RTT:</span> {request.rtt_hours}h
+                                  </div>
+                                )}
+                                {request.leave_type === 'RTT' && request.start_time && request.end_time && (
+                                  <div>
+                                    <span className="font-medium">Plage:</span> {request.start_time} - {request.end_time}
+                                  </div>
+                                )}
                               </div>
                               {request.reason && (
                                 <div className="mt-2">
@@ -449,7 +521,6 @@ const ManagerDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {console.log('🎯 Rendu des demandes:', leaveRequests.length, 'demandes')}
                   {leaveRequests.map((request) => (
                     <Card key={request.id}>
                       <CardContent className="p-4">
@@ -472,6 +543,16 @@ const ManagerDashboard = () => {
                               <div>
                                 <span className="font-medium">Durée:</span> {request.days_count} jour(s)
                               </div>
+                              {request.leave_type === 'RTT' && request.rtt_hours && (
+                                <div>
+                                  <span className="font-medium">RTT:</span> {request.rtt_hours}h
+                                </div>
+                              )}
+                              {request.leave_type === 'RTT' && request.start_time && request.end_time && (
+                                <div>
+                                  <span className="font-medium">Plage:</span> {request.start_time} - {request.end_time}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

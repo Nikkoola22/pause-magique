@@ -7,53 +7,17 @@ import { LogOut, CheckCircle, XCircle, Clock, Calendar, Users } from "lucide-rea
 import WeeklySchedule from "@/components/WeeklySchedule";
 import AgentProfile from "@/components/AgentProfile";
 import MonthlyLeaveCalendar from "@/components/MonthlyLeaveCalendar";
+import { applyLeaveToSchedule, ScheduleSlot } from "@/utils/leaveRequestUtils";
 
 const WorkingManagerDashboard = () => {
   const [userSession, setUserSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
   const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<{ [key: string]: ScheduleSlot[] }>({});
 
-  // Données des agents du service (mock) - Équipe de Médecine (3 personnes)
-  // CORRECTION: agent1 = Sophie Bernard, agent3 = Nat Danede
-  const serviceAgents = [
-    { 
-      id: '550e8400-e29b-41d4-a716-446655440003', 
-      name: 'Sophie Bernard', 
-      service: 'Médecine', 
-      role: 'Infirmière',
-      email: 'sophie.bernard@hopital.fr',
-      phone: '01.23.45.67.89',
-      hireDate: 'Janvier 2023',
-      weeklyHours: 35,
-      rttDays: 6,
-      username: 'agent1' // CORRECT: Sophie Bernard = agent1
-    },
-    { 
-      id: '550e8400-e29b-41d4-a716-446655440004', 
-      name: 'Antoine Rousseau', 
-      service: 'Médecine', 
-      role: 'Médecin',
-      email: 'antoine.rousseau@hopital.fr',
-      phone: '06 12 34 56 82',
-      hireDate: 'Juin 2023',
-      weeklyHours: 36,
-      rttDays: 6,
-      username: 'agent2' // Antoine Rousseau = agent2
-    },
-    { 
-      id: '550e8400-e29b-41d4-a716-446655440005', 
-      name: 'Nat Danede', 
-      service: 'Médecine', 
-      role: 'Employé',
-      email: 'nat.danede@hopital.fr',
-      phone: '06 45 23 67 89',
-      hireDate: 'Mars 2022',
-      weeklyHours: 36,
-      rttDays: 6,
-      username: 'agent3' // CORRECT: Nat Danede = agent3
-    }
-  ];
+  // Données des agents du service (vide - utiliser Supabase uniquement)
+  const serviceAgents = [];
 
   // Fonction pour charger les demandes depuis localStorage
   const loadLeaveRequests = () => {
@@ -104,6 +68,16 @@ const WorkingManagerDashboard = () => {
           setUserSession(userData);
           // Charger les demandes après avoir défini la session
           loadLeaveRequests();
+          
+          // Charger les plannings
+          const saved = localStorage.getItem('weeklySchedules');
+          if (saved) {
+            try {
+              setSchedules(JSON.parse(saved));
+            } catch (error) {
+              console.error('Erreur lors du chargement des plannings:', error);
+            }
+          }
         }
       } catch (error) {
         console.error('Error parsing session:', error);
@@ -240,6 +214,26 @@ const WorkingManagerDashboard = () => {
                               size="sm" 
                               className="bg-green-600 hover:bg-green-700"
                               onClick={() => {
+                                // Obtenir l'ID agent depuis agent_id (priorité) ou employee_name
+                                let agentId = (request as any).agent_id || request.employee_name;
+                                
+                                // Trouver l'agent concerné
+                                let agent = serviceAgents.find(a => a.id === agentId || a.name === request.employee_name);
+                                
+                                if (!agent) {
+                                  // Créer un agent temporaire si non trouvé
+                                  agent = {
+                                    id: agentId,
+                                    name: request.employee_name
+                                  } as any;
+                                }
+                                
+                                // Créer une version approuvée de la demande pour applyLeaveToSchedule
+                                const approvedRequest = {
+                                  ...request,
+                                  status: 'approuve'
+                                };
+                                
                                 setLeaveRequests(prev => prev.map(req => 
                                   req.id === request.id ? { ...req, status: 'approuve' } : req
                                 ));
@@ -249,6 +243,15 @@ const WorkingManagerDashboard = () => {
                                   req.id === request.id ? { ...req, status: 'approuve' } : req
                                 );
                                 localStorage.setItem('all_leave_requests', JSON.stringify(updated));
+                                
+                                // Appliquer le congé au planning avec la demande approuvée
+                                if (agent && agent.id) {
+                                  const currentSchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+                                  const updatedSchedules = applyLeaveToSchedule(agent.id, approvedRequest, currentSchedules);
+                                  setSchedules(updatedSchedules);
+                                  console.log('📅 Congé appliqué au planning de:', agent.name);
+                                }
+                                
                                 console.log('✅ Demande approuvée:', request.id);
                               }}
                             >

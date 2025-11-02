@@ -49,19 +49,54 @@ const AgentLeaveRights: React.FC<AgentLeaveRightsProps> = ({
     return 0;
   };
 
+  // Calculer les heures de travail pour un jour donné
+  const getWorkingHoursForDay = (dateStr: string): number => {
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getDay();
+    
+    // Dimanche = 0, Samedi = 6
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return 0; // Pas de travail le week-end
+    }
+    
+    // Lundi-Vendredi : 7.5h par défaut (selon les heures hebdomadaires)
+    const weeklyHours = agent.weeklyHours || 35;
+    return weeklyHours / 5; // Divisé par 5 jours
+  };
+
+  // Déduire les heures RTT d'une demande
+  const deductRTTFromRequest = (request: LeaveRequest): number => {
+    if (request.leave_type !== 'RTT') return 0;
+    
+    const startDate = new Date(request.start_date);
+    const endDate = new Date(request.end_date);
+    let totalHours = 0;
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      totalHours += getWorkingHoursForDay(dateStr);
+    }
+    
+    return totalHours;
+  };
+
   // Calculer le résumé RTT
   const calculateRTTSummary = () => {
     const rttRequests = leaveRequests.filter(req => 
       req.leave_type === 'RTT' && req.status === 'approuve'
     );
-    const used = rttRequests.reduce((sum, req) => sum + req.days_count, 0);
-    const total = agent.rttDays || 0;
+    
+    // Calcul des heures utilisées en RTT
+    const used = rttRequests.reduce((sum, req) => sum + deductRTTFromRequest(req), 0);
+    
+    // Total RTT en heures = rttDays * 7.5h
+    const total = (agent.rttDays || 0) * 7.5;
     const remaining = Math.max(0, total - used);
     
     return {
-      total,
-      used,
-      remaining
+      total: Math.round(total * 10) / 10, // Arrondir à 1 décimale
+      used: Math.round(used * 10) / 10,
+      remaining: Math.round(remaining * 10) / 10
     };
   };
 

@@ -22,7 +22,9 @@ const WorkingAgentDashboard = () => {
     leave_type: '',
     start_date: '',
     end_date: '',
-    reason: ''
+    reason: '',
+    start_time: '',
+    end_time: ''
   });
   // Variable mockRequests supprimée - utilisation directe de getAgentRequests
 
@@ -34,10 +36,12 @@ const WorkingAgentDashboard = () => {
     const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
     
     // Filtrer les demandes de cet agent
+    // Chercher d'abord par agent_id, puis par employee_name
     const agentRequests = allRequests.filter(req => {
-      const isAgentRequest = req.employee_name === userSessionData.name || 
-                            req.employee_name === userSessionData.username ||
-                            req.employee_name === 'Sophie Bernard';
+      const agentId = userSessionData.id || userSessionData.username;
+      const isAgentRequest = (req.agent_id && req.agent_id === agentId) ||
+                            req.employee_name === userSessionData.name || 
+                            req.employee_name === userSessionData.username;
       
       return isAgentRequest;
     });
@@ -105,6 +109,56 @@ const WorkingAgentDashboard = () => {
     return totalHours;
   };
 
+  // Fonction pour récupérer les horaires de travail du planning pour une date donnée
+  const getScheduledHours = (agentId: string, dateStr: string): { startTime?: string; endTime?: string } => {
+    const savedSchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+    
+    // Parser la date
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    // Obtenir le nom du jour en français
+    const dayNames = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+    const dayName = dayNames[date.getDay()];
+    
+    // Générer la clé de planning (lundi de la semaine)
+    const weekStart = new Date(date);
+    const dayOfWeek = weekStart.getDay();
+    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    weekStart.setDate(weekStart.getDate() + daysToMonday);
+    
+    const keyYear = weekStart.getFullYear();
+    const keyMonth = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const keyDay = String(weekStart.getDate()).padStart(2, '0');
+    const scheduleKey = `${agentId}_${keyYear}-${keyMonth}-${keyDay}`;
+    
+    console.log(`🔍 Recherche horaires pour ${dateStr} (${dayName}), clé: ${scheduleKey}`);
+    
+    const schedule = savedSchedules[scheduleKey];
+    if (schedule) {
+      // Chercher les créneaux de travail (morning + afternoon) pour ce jour
+      const slots = schedule.filter(slot => slot.day === dayName && slot.status === 'working');
+      
+      if (slots.length > 0) {
+        const morning = slots.find(s => s.time === 'Matin');
+        const afternoon = slots.find(s => s.time === 'Après-midi');
+        
+        // Prendre le premier créneau (matin) et le dernier (après-midi) s'il existe
+        const firstSlot = morning || slots[0];
+        const lastSlot = afternoon || slots[slots.length - 1];
+        
+        console.log(`✅ Horaires trouvés: ${firstSlot.startTime} - ${lastSlot.endTime}`);
+        return {
+          startTime: firstSlot.startTime,
+          endTime: lastSlot.endTime
+        };
+      }
+    }
+    
+    console.log(`⚠️ Pas d'horaires trouvés pour ${dateStr}`);
+    return {};
+  };
+
   // Fonction pour calculer les CA et RTT de l'agent
   const calculateLeaveSummary = () => {
     // Récupérer les données de l'agent depuis localStorage
@@ -152,7 +206,6 @@ const WorkingAgentDashboard = () => {
     };
   };
 
-
   const handleCreateRequest = () => {
     console.log('🔄 Création d\'une nouvelle demande:', newRequest);
     
@@ -161,10 +214,78 @@ const WorkingAgentDashboard = () => {
       return;
     }
 
-    // Calculer le nombre de jours
-    const startDate = new Date(newRequest.start_date);
-    const endDate = new Date(newRequest.end_date);
-    const daysCount = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    // Calculer le nombre de jours et les heures RTT
+    const [startYear, startMonth, startDay] = newRequest.start_date.split('-').map(Number);
+    const [endYear, endMonth, endDay] = newRequest.end_date.split('-').map(Number);
+    
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
+    
+    let daysCount = 0;
+    let rttHours = 0;
+    let startTimeFromPlanning: string | undefined;
+    let endTimeFromPlanning: string | undefined;
+    
+    // Déterminer le nom de l'employé et agent_id de manière robuste
+    let employeeName = 'Agent Inconnu';
+    let agentId = userSession?.username || userSession?.id || 'default_agent';
+    
+    if (userSession?.name) {
+      employeeName = userSession.name;
+    } else if (userSession?.username) {
+      employeeName = userSession.username;
+    } else if (userSession?.full_name) {
+      employeeName = userSession.full_name;
+    }
+
+    // Parcourir les jours du congé
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dayOfWeek = currentDate.getDay();
+      
+      // Compter tous les jours sauf dimanche
+      if (dayOfWeek !== 0) {
+        daysCount++;
+        
+        // Pour RTT : gérer les horaires
+        if (newRequest.leave_type === 'RTT') {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          
+          // Si pas d'horaires renseignés, les récupérer du planning
+          if (!newRequest.start_time && !newRequest.end_time) {
+            const plannedHours = getScheduledHours(agentId, dateStr);
+            
+            // Utiliser les horaires du premier jour comme référence
+            if (daysCount === 1 && plannedHours.startTime && plannedHours.endTime) {
+              startTimeFromPlanning = plannedHours.startTime;
+              endTimeFromPlanning = plannedHours.endTime;
+            }
+            
+            // Calculer les heures basées sur les horaires trouvés
+            if (plannedHours.startTime && plannedHours.endTime) {
+              const [sH, sM] = plannedHours.startTime.split(':').map(Number);
+              const [eH, eM] = plannedHours.endTime.split(':').map(Number);
+              const hoursWorked = (eH - sH) + (eM - sM) / 60;
+              rttHours += hoursWorked;
+              console.log(`  ${dateStr}: ${plannedHours.startTime}-${plannedHours.endTime} = ${hoursWorked}h`);
+            } else {
+              // Fallback : heures standard par jour
+              const workingHours = getWorkingHoursForDay(dateStr);
+              rttHours += workingHours;
+              console.log(`  ${dateStr}: heures standard = ${workingHours}h`);
+            }
+          } else {
+            // Horaires renseignés manuellement
+            const [sH, sM] = newRequest.start_time.split(':').map(Number);
+            const [eH, eM] = newRequest.end_time.split(':').map(Number);
+            const hoursWorked = (eH - sH) + (eM - sM) / 60;
+            rttHours += hoursWorked;
+          }
+        }
+      }
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
 
     // Créer la nouvelle demande
     const newLeaveRequest = {
@@ -175,32 +296,30 @@ const WorkingAgentDashboard = () => {
       days_count: daysCount,
       reason: newRequest.reason || '',
       status: 'en_attente',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      ...(newRequest.leave_type === 'RTT' && {
+        rtt_hours: rttHours,
+        start_time: newRequest.start_time || startTimeFromPlanning || '',
+        end_time: newRequest.end_time || endTimeFromPlanning || ''
+      })
     };
 
     console.log('📝 Nouvelle demande créée:', newLeaveRequest);
+    console.log('🕐 RTT - Horaires utilisés:', { startTimeFromPlanning, endTimeFromPlanning, rttHours });
 
     // Sauvegarder dans all_leave_requests (source unique de vérité)
     const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
     
-    // Déterminer le nom de l'employé de manière plus robuste
-    let employeeName = 'Agent Inconnu';
-    if (userSession?.name) {
-      employeeName = userSession.name;
-    } else if (userSession?.username) {
-      employeeName = userSession.username;
-    } else if (userSession?.full_name) {
-      employeeName = userSession.full_name;
-    }
-    
     const requestWithEmployeeName = {
       ...newLeaveRequest,
-      employee_name: employeeName
+      employee_name: employeeName,
+      agent_id: agentId
     };
     
     allRequests.unshift(requestWithEmployeeName);
     localStorage.setItem('all_leave_requests', JSON.stringify(allRequests));
     console.log('💾 Demande sauvegardée dans all_leave_requests:', requestWithEmployeeName);
+    console.log('👤 Agent ID utilisé:', agentId);
     console.log('👤 Nom de l\'employé utilisé:', employeeName);
 
     // Réinitialiser le formulaire
@@ -208,7 +327,9 @@ const WorkingAgentDashboard = () => {
       leave_type: '',
       start_date: '',
       end_date: '',
-      reason: ''
+      reason: '',
+      start_time: '',
+      end_time: ''
     });
     setShowCreateForm(false);
 
@@ -452,6 +573,16 @@ const WorkingAgentDashboard = () => {
                           <div>
                             <span className="font-medium">Créée le:</span> {new Date(request.created_at).toLocaleDateString('fr-FR')}
                           </div>
+                          {request.leave_type === 'RTT' && (request.rtt_hours ? (
+                            <div>
+                              <span className="font-medium">RTT:</span> {request.rtt_hours}h
+                            </div>
+                          ) : null)}
+                          {request.leave_type === 'RTT' && request.start_time && request.end_time && (
+                            <div>
+                              <span className="font-medium">Plage horaire:</span> {request.start_time} - {request.end_time}
+                            </div>
+                          )}
                         </div>
                         {request.reason && (
                           <div className="mt-2">
@@ -511,6 +642,35 @@ const WorkingAgentDashboard = () => {
                   />
                 </div>
               </div>
+
+              {/* Champs horaires pour RTT */}
+              {newRequest.leave_type === 'RTT' && (
+                <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="space-y-2">
+                    <Label htmlFor="start_time">Heure de début</Label>
+                    <Input
+                      id="start_time"
+                      type="time"
+                      value={newRequest.start_time}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, start_time: e.target.value }))}
+                      placeholder="09:00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="end_time">Heure de fin</Label>
+                    <Input
+                      id="end_time"
+                      type="time"
+                      value={newRequest.end_time}
+                      onChange={(e) => setNewRequest(prev => ({ ...prev, end_time: e.target.value }))}
+                      placeholder="17:00"
+                    />
+                  </div>
+                  <p className="col-span-2 text-xs text-gray-600">
+                    💡 Optionnel : Si vous laissez vide, les horaires du planning seront utilisés automatiquement
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="reason">Motif (optionnel)</Label>
@@ -533,7 +693,9 @@ const WorkingAgentDashboard = () => {
                     leave_type: '',
                     start_date: '',
                     end_date: '',
-                    reason: ''
+                    reason: '',
+                    start_time: '',
+                    end_time: ''
                   })}
                 >
                   Réinitialiser

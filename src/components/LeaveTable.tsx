@@ -144,6 +144,7 @@ export function LeaveTable({ employee, leaveRequests, onUpdateRequest, onDeleteR
                   <TableHead>Date début</TableHead>
                   <TableHead>Date fin</TableHead>
                   <TableHead>Durée</TableHead>
+                  <TableHead>Plage horaire</TableHead>
                   <TableHead>Motif</TableHead>
                   <TableHead>Statut</TableHead>
                   <TableHead className="w-24">Actions</TableHead>
@@ -198,6 +199,42 @@ export function LeaveTable({ employee, leaveRequests, onUpdateRequest, onDeleteR
                         />
                       ) : (
                         request.hours
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {request.type === 'RTT' ? (
+                        editingId === request.id ? (
+                          <div className="flex gap-2">
+                            <Input
+                              type="time"
+                              value={editValues.startTime || ''}
+                              onChange={(e) => setEditValues({ 
+                                ...editValues, 
+                                startTime: e.target.value 
+                              })}
+                              className="w-24"
+                            />
+                            <span>-</span>
+                            <Input
+                              type="time"
+                              value={editValues.endTime || ''}
+                              onChange={(e) => setEditValues({ 
+                                ...editValues, 
+                                endTime: e.target.value 
+                              })}
+                              className="w-24"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm">
+                            {request.startTime && request.endTime 
+                              ? `${request.startTime} - ${request.endTime}`
+                              : '-'
+                            }
+                          </span>
+                        )
+                      ) : (
+                        '-'
                       )}
                     </TableCell>
                     <TableCell>
@@ -262,7 +299,7 @@ export function LeaveTable({ employee, leaveRequests, onUpdateRequest, onDeleteR
                 ))}
                 {leaveRequests.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Aucune demande de congé enregistrée
                     </TableCell>
                   </TableRow>

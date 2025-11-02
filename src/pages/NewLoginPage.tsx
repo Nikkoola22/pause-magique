@@ -25,67 +25,6 @@ const NewLoginPage = () => {
 
     setIsLoading(true);
     
-    // Vérification locale temporaire pour les utilisateurs de test
-    // CORRECTION: agent1 = Sophie Bernard, agent3 = Nat Danede
-    const testUsers: Record<string, any> = {
-      'admin': { role: 'admin', password: 'password', name: 'Administrateur', id: '550e8400-e29b-41d4-a716-446655440012' },
-      'resp.medecine': { role: 'chef_service', password: 'password', name: 'Dr. Martin Dubois', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440009' },
-      'agent1': { role: 'infirmiere', password: 'password', name: 'Sophie Bernard', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440003', email: 'sophie.bernard@hopital.fr', phone: '01.23.45.67.89' },
-      'agent2': { role: 'medecin', password: 'password', name: 'Antoine Rousseau', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440004', email: 'antoine.rousseau@hopital.fr', phone: '06 12 34 56 82' },
-      'agent3': { role: 'employe', password: 'password', name: 'Nat Danede', service: 'Médecine', id: '550e8400-e29b-41d4-a716-446655440005', email: 'nat.danede@hopital.fr', phone: '06 45 23 67 89' }
-    };
-
-    const user = testUsers[userCredentials.username];
-    
-    if (user && user.password === userCredentials.password) {
-      // Simuler une session utilisateur
-      const mockUser = {
-        id: user.id, // Utiliser l'ID fixe au lieu du username
-        username: userCredentials.username,
-        role: user.role,
-        name: user.name,
-        service: user.service || null,
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('Mock user created:', mockUser);
-      sessionStorage.setItem('user_session', JSON.stringify(mockUser));
-      
-      toast({
-        title: "Connexion réussie",
-        description: `Bienvenue ${user.name}`,
-      });
-      
-      // Rediriger selon le rôle
-      switch (user.role) {
-        case 'admin':
-          console.log('Redirecting to admin dashboard');
-          navigate("/admin-dashboard");
-          break;
-        case 'chef_service':
-          console.log('Redirecting to manager dashboard');
-          navigate("/manager-dashboard");
-          break;
-        case 'employe':
-        case 'medecin':
-        case 'infirmiere':
-        case 'dentiste':
-        case 'assistante_dentaire':
-        case 'rh':
-        case 'comptabilite':
-        case 'sage_femme':
-          console.log('Redirecting to agent dashboard for role:', user.role);
-          navigate("/agent-dashboard");
-          break;
-        default:
-          console.log('Redirecting to default dashboard for unknown role:', user.role);
-          navigate("/dashboard");
-      }
-      
-      setIsLoading(false);
-      return;
-    }
-    
     try {
       const response = await fetch('https://jstgllotjifmgjxjsbpm.supabase.co/functions/v1/user-login', {
         method: 'POST',

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,14 @@ interface Agent {
   congésAnnuel?: number;
   heuresFormation?: number;
   enfantMalade?: number;
+}
+
+interface EditedAgentData extends Agent {
+  weeklyHours: number;
+  rttDays: number;
+  congésAnnuel: number;
+  heuresFormation: number;
+  enfantMalade: number;
 }
 
 interface LeaveRequest {
@@ -155,14 +163,20 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
       if (data) {
         console.log('✅ Données rechargées:', data);
         // Mettre à jour l'agent avec les données de Supabase
-        const updatedAgent = {
+        const updatedAgent: EditedAgentData = {
           ...agent,
+          id: agent.id,
           name: data.full_name,
+          service: agent.service,
+          role: agent.role,
           email: data.email,
           phone: data.phone,
-          role: data.role,
-          service: data.service,
-          hireDate: data.hire_date
+          hireDate: data.hire_date,
+          weeklyHours: agent.weeklyHours || 35,
+          rttDays: agent.rttDays || 0,
+          congésAnnuel: agent.congésAnnuel || 25,
+          heuresFormation: agent.heuresFormation || 0,
+          enfantMalade: agent.enfantMalade || 3
         };
         
         // Mettre à jour l'état local
@@ -179,8 +193,19 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
   const [savedSchedules, setSavedSchedules] = useState<{[key: string]: any[]}>({});
   const [currentWeekSchedule, setCurrentWeekSchedule] = useState<any[]>([]);
   const [currentWeekKey, setCurrentWeekKey] = useState<string>('');
+  const agentScheduleKeys = useMemo(() => {
+    if (!agent?.id || !savedSchedules) return [] as string[];
+    const keys = Object.keys(savedSchedules);
+    const strictMatches = keys.filter(key => key.startsWith(`${agent.id}_`));
+    if (strictMatches.length > 0) return strictMatches.sort();
+    return keys
+      .filter(key => key.split('_')[0] === agent.id || key.includes(agent.id))
+      .sort();
+  }, [savedSchedules, agent?.id]);
+  const agentScheduleCount = agentScheduleKeys.length;
+  const currentScheduleIndex = agentScheduleKeys.indexOf(currentWeekKey);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedAgent, setEditedAgent] = useState({
+  const [editedAgent, setEditedAgent] = useState<EditedAgentData>({
     ...agent,
     weeklyHours: agent.weeklyHours || 35,
     rttDays: agent.rttDays || 0,
@@ -273,8 +298,8 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
           full_name: editedAgent.name,
           email: editedAgent.email,
           phone: editedAgent.phone,
-          role: editedAgent.role,
-          service: editedAgent.service,
+          role: editedAgent.role as any,
+          service: editedAgent.service as any,
           hire_date: editedAgent.hireDate
           // Note: weekly_hours et rtt_days ne sont pas dans la table profiles
           // Ils sont stockés localement dans editedAgent
@@ -387,33 +412,32 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
   // Charger les plannings sauvegardés
   useEffect(() => {
     const loadAgentPlanning = () => {
-      const saved = localStorage.getItem('savedSchedules');
-      
-      if (saved) {
-        try {
-          const schedules = JSON.parse(saved);
-          setSavedSchedules(schedules);
-          
-          // Chercher le planning de la semaine actuelle pour cet agent
-          const currentWeek = new Date();
-          const currentWeekKey = getScheduleKey(agent.id, currentWeek);
-          
-          // Chercher TOUS les plannings pour cet agent
-          const agentKeys = Object.keys(schedules).filter(key => key.includes(agent.id));
-          
-          // Chercher d'abord le planning de la semaine actuelle
-          if (schedules[currentWeekKey]) {
-            const currentWeekSchedule = schedules[currentWeekKey];
-            setCurrentWeekSchedule(currentWeekSchedule);
-            setCurrentWeekKey(currentWeekKey);
-          } else {
-            // Pas de planning pour la semaine actuelle
-            setCurrentWeekSchedule([]);
-            setCurrentWeekKey(currentWeekKey); // Garder la clé de la semaine actuelle
-          }
-        } catch (error) {
-          console.error('❌ Erreur lors du chargement des plannings:', error);
+      try {
+        const savedRaw = localStorage.getItem('savedSchedules');
+        const weeklyRaw = localStorage.getItem('weeklySchedules');
+        const savedData = savedRaw ? JSON.parse(savedRaw) : {};
+        const weeklyData = weeklyRaw ? JSON.parse(weeklyRaw) : {};
+        const mergedSchedules = { ...savedData, ...weeklyData };
+
+        setSavedSchedules(mergedSchedules);
+        if (Object.keys(mergedSchedules).length > 0) {
+          localStorage.setItem('weeklySchedules', JSON.stringify(mergedSchedules));
         }
+
+        const currentWeekKey = getScheduleKey(agent.id, new Date());
+
+        if (mergedSchedules[currentWeekKey]) {
+          setCurrentWeekSchedule(mergedSchedules[currentWeekKey]);
+          setCurrentWeekKey(currentWeekKey);
+        } else {
+          setCurrentWeekSchedule([]);
+          setCurrentWeekKey(currentWeekKey);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors du chargement des plannings:', error);
+        setSavedSchedules({});
+        setCurrentWeekSchedule([]);
+        setCurrentWeekKey(getScheduleKey(agent.id, new Date()));
       }
     };
 
@@ -926,17 +950,14 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        const agentKeys = Object.keys(savedSchedules).filter(k => k.includes(agent.id)).sort();
-                        const currentIndex = agentKeys.indexOf(currentWeekKey);
-                        
-                        if (currentIndex > 0) {
-                          const previousKey = agentKeys[currentIndex - 1];
+                        if (currentScheduleIndex > 0) {
+                          const previousKey = agentScheduleKeys[currentScheduleIndex - 1];
                           const previousPlanning = savedSchedules[previousKey];
                           setCurrentWeekSchedule(previousPlanning);
                           setCurrentWeekKey(previousKey);
                         }
                       }}
-                      disabled={currentWeekKey === '' || !Object.keys(savedSchedules).filter(k => k.includes(agent.id)).includes(currentWeekKey) || Object.keys(savedSchedules).filter(k => k.includes(agent.id)).indexOf(currentWeekKey) === 0}
+                      disabled={currentWeekKey === '' || currentScheduleIndex <= 0}
                       className="flex items-center gap-2"
                     >
                       <ArrowLeft className="h-4 w-4" />
@@ -948,7 +969,7 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                         Navigation des plannings
                       </h4>
                       <p className="text-xs text-blue-600">
-                        {Object.keys(savedSchedules).filter(k => k.includes(agent.id)).length} plannings disponibles
+                        {agentScheduleCount} plannings disponibles
                       </p>
                       {currentWeekKey && (
                         <p className="text-xs text-gray-600 mt-1">
@@ -961,17 +982,14 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        const agentKeys = Object.keys(savedSchedules).filter(k => k.includes(agent.id)).sort();
-                        const currentIndex = agentKeys.indexOf(currentWeekKey);
-                        
-                        if (currentIndex < agentKeys.length - 1) {
-                          const nextKey = agentKeys[currentIndex + 1];
+                        if (currentScheduleIndex > -1 && currentScheduleIndex < agentScheduleKeys.length - 1) {
+                          const nextKey = agentScheduleKeys[currentScheduleIndex + 1];
                           const nextPlanning = savedSchedules[nextKey];
                           setCurrentWeekSchedule(nextPlanning);
                           setCurrentWeekKey(nextKey);
                         }
                       }}
-                      disabled={currentWeekKey === '' || !Object.keys(savedSchedules).filter(k => k.includes(agent.id)).includes(currentWeekKey) || Object.keys(savedSchedules).filter(k => k.includes(agent.id)).indexOf(currentWeekKey) === Object.keys(savedSchedules).filter(k => k.includes(agent.id)).length - 1}
+                      disabled={currentWeekKey === '' || currentScheduleIndex === -1 || currentScheduleIndex >= agentScheduleKeys.length - 1}
                       className="flex items-center gap-2"
                     >
                       Suivant
@@ -988,7 +1006,7 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                   Semaine du {currentWeekKey ? currentWeekKey.split('_')[1] : 'en cours'}
                 </p>
                 <p className="text-xs mt-1 text-blue-600">
-                  {Object.keys(savedSchedules).filter(k => k.includes(agent.id)).length} plannings disponibles pour d'autres semaines
+                  {agentScheduleCount} plannings disponibles pour d'autres semaines
                 </p>
                 <p className="text-xs mt-1 text-orange-600">
                   Le responsable doit créer un planning pour cette semaine
@@ -998,9 +1016,8 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                     variant="outline" 
                     size="sm"
                     onClick={() => {
-                      const agentKeys = Object.keys(savedSchedules).filter(k => k.includes(agent.id));
-                      if (agentKeys.length > 0) {
-                        const mostRecentKey = agentKeys.sort().reverse()[0];
+                      if (agentScheduleCount > 0) {
+                        const mostRecentKey = agentScheduleKeys[agentScheduleCount - 1];
                         const mostRecentPlanning = savedSchedules[mostRecentKey];
                         setCurrentWeekSchedule(mostRecentPlanning);
                         setCurrentWeekKey(mostRecentKey);
@@ -1014,9 +1031,8 @@ const AgentProfile = ({ agent, onClose }: AgentProfileProps) => {
                     variant="outline" 
                     size="sm"
                     onClick={() => {
-                      const agentKeys = Object.keys(savedSchedules).filter(k => k.includes(agent.id));
-                      if (agentKeys.length > 0) {
-                        const oldestKey = agentKeys.sort()[0];
+                      if (agentScheduleCount > 0) {
+                        const oldestKey = agentScheduleKeys[0];
                         const oldestPlanning = savedSchedules[oldestKey];
                         setCurrentWeekSchedule(oldestPlanning);
                         setCurrentWeekKey(oldestKey);

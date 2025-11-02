@@ -19,6 +19,8 @@ export interface LeaveRequest {
   hours: string;
   motif: string;
   status: 'pending' | 'approved' | 'rejected';
+  startTime?: string; // Pour RTT : heure de début (ex: "09:00")
+  endTime?: string;   // Pour RTT : heure de fin (ex: "17:00")
 }
 
 interface LeaveRequestFormProps {
@@ -41,6 +43,8 @@ export function LeaveRequestForm({ onSubmit }: LeaveRequestFormProps) {
   const [endDate, setEndDate] = useState<Date>();
   const [hours, setHours] = useState("");
   const [motif, setMotif] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,14 +53,22 @@ export function LeaveRequestForm({ onSubmit }: LeaveRequestFormProps) {
       return;
     }
 
-    onSubmit({
+    const request: Omit<LeaveRequest, 'id'> = {
       type: leaveType,
       startDate,
       endDate,
       hours: hours || "7:30:00",
       motif,
       status: 'pending'
-    });
+    };
+
+    // Ajouter les heures pour RTT
+    if (leaveType === "RTT") {
+      if (startTime) request.startTime = startTime;
+      if (endTime) request.endTime = endTime;
+    }
+
+    onSubmit(request);
 
     // Reset form
     setLeaveType("");
@@ -64,6 +76,8 @@ export function LeaveRequestForm({ onSubmit }: LeaveRequestFormProps) {
     setEndDate(undefined);
     setHours("");
     setMotif("");
+    setStartTime("");
+    setEndTime("");
   };
 
   return (
@@ -103,6 +117,35 @@ export function LeaveRequestForm({ onSubmit }: LeaveRequestFormProps) {
               />
             </div>
           </div>
+
+          {/* Champs horaires pour RTT */}
+          {leaveType === "RTT" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="space-y-2">
+                <Label htmlFor="start-time">Heure de début</Label>
+                <Input
+                  id="start-time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  placeholder="09:00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="end-time">Heure de fin</Label>
+                <Input
+                  id="end-time"
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  placeholder="17:00"
+                />
+              </div>
+              <p className="col-span-full text-xs text-gray-600">
+                Optionnel : Spécifiez un créneau horaire pour le RTT
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
