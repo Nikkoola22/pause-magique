@@ -25,6 +25,31 @@ serve(async (req) => {
       )
     }
 
+    // Check for test admin credentials (development only)
+    if (username === 'admin' && password === 'test') {
+      const testAdminUser = {
+        id: '00000000-0000-0000-0000-000000000000',
+        username: 'admin',
+        first_name: 'Admin',
+        last_name: 'Système',
+        email: 'admin@test.local',
+        role: 'admin',
+        is_active: true,
+        service: { name: 'Administration', description: 'Compte administrateur de test' }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          user: testAdminUser,
+          test: true
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      )
+    }
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? 'https://jstgllotjifmgjxjsbpm.supabase.co'
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''

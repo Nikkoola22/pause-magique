@@ -26,6 +26,30 @@ const NewLoginPage = () => {
     setIsLoading(true);
     
     try {
+      // Check for test admin credentials first (local fallback)
+      if (userCredentials.username === 'admin' && userCredentials.password === 'test') {
+        const testAdminUser = {
+          id: '00000000-0000-0000-0000-000000000000',
+          username: 'admin',
+          first_name: 'Admin',
+          last_name: 'Système',
+          email: 'admin@test.local',
+          role: 'admin',
+          is_active: true,
+          service: { name: 'Administration', description: 'Compte administrateur de test' }
+        };
+        
+        sessionStorage.setItem('user_session', JSON.stringify(testAdminUser));
+        
+        toast({
+          title: "Connexion réussie",
+          description: `Bienvenue ${testAdminUser.first_name} ${testAdminUser.last_name}`,
+        });
+        
+        navigate("/admin-dashboard");
+        return;
+      }
+
       const response = await fetch('https://jstgllotjifmgjxjsbpm.supabase.co/functions/v1/user-login', {
         method: 'POST',
         headers: {
