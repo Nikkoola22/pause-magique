@@ -3,6 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 // Données des utilisateurs (vide - utiliser Supabase uniquement)
 const localAgents = [];
 
+// Récupérer les URLs et clés depuis les variables d'environnement
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
+
 export const migrateLocalDataToSupabase = async () => {
   console.log('🚀 Début de la migration des données locales vers Supabase...');
   
@@ -36,11 +40,11 @@ export const migrateLocalDataToSupabase = async () => {
     console.log(`📝 Tentative d'insertion de ${profilesToInsert.length} profils...`);
 
     // Utiliser l'API REST directement pour contourner RLS
-    const response = await fetch(`${supabase.supabaseUrl}/rest/v1/profiles`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
-        'apikey': supabase.supabaseKey,
-        'Authorization': `Bearer ${supabase.supabaseKey}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'resolution=merge-duplicates,return=representation'
       },
@@ -75,11 +79,11 @@ export const clearSupabaseProfiles = async () => {
   try {
     // Vider la table profiles
     console.log('🗑️ Suppression des profils...');
-    const profilesResponse = await fetch(`${supabase.supabaseUrl}/rest/v1/profiles?id=neq.00000000-0000-0000-0000-000000000000`, {
+    const profilesResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=neq.00000000-0000-0000-0000-000000000000`, {
       method: 'DELETE',
       headers: {
-        'apikey': supabase.supabaseKey,
-        'Authorization': `Bearer ${supabase.supabaseKey}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=minimal'
       }
@@ -124,11 +128,11 @@ export const forceMigrationComplete = async () => {
 
     console.log(`📝 Tentative d'insertion de ${profilesToInsert.length} profils...`);
 
-    const profilesResponse = await fetch(`${supabase.supabaseUrl}/rest/v1/profiles`, {
+    const profilesResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
       method: 'POST',
       headers: {
-        'apikey': supabase.supabaseKey,
-        'Authorization': `Bearer ${supabase.supabaseKey}`,
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'
       },
