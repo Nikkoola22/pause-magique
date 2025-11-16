@@ -40,6 +40,30 @@ export const SupabaseConnectionStatus = ({
     );
   }
 
+  // Mode démo/offline
+  if (status.error?.includes('Mode DÉMO')) {
+    return (
+      <Alert className="bg-yellow-50 border-yellow-200">
+        <AlertCircle className="h-4 w-4 text-yellow-600" />
+        <AlertDescription className="text-yellow-800">
+          <div className="font-semibold">⚠️ Mode DÉMO (hors ligne)</div>
+          <div className="text-sm mt-1">Pas de connexion réseau vers Supabase. L'application fonctionne en mode démo.</div>
+          {showDetails && (
+            <div className="text-xs mt-2 p-2 bg-yellow-100 rounded">
+              <strong>Configuration requise:</strong>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Vérifier la connectivité Internet</li>
+                <li>Vérifier les paramètres DNS</li>
+                <li>Vérifier les pare-feu/proxy</li>
+                <li>Une fois connecté: Ajouter http://localhost:5173 aux CORS Supabase</li>
+              </ul>
+            </div>
+          )}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   if (status.connected) {
     return (
       <Alert className="bg-green-50 border-green-200">
