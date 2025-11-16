@@ -61,22 +61,20 @@ export const SupabaseConnectionStatus = ({
     <Alert className="bg-red-50 border-red-200">
       <AlertCircle className="h-4 w-4 text-red-600" />
       <AlertDescription className="text-red-800">
-        <div className="font-semibold">❌ Erreur de connexion Supabase</div>
-        <div className="text-sm mt-1">{status.error}</div>
+        <div className="font-semibold">❌ Supabase non connecté</div>
+        <div className="text-sm mt-1">
+          {status.error?.includes('--local') 
+            ? status.error 
+            : 'Connexion impossible. Démarrez avec: ./scripts/start-with-supabase.sh --local'}
+        </div>
         {showDetails && (
-          <div className="text-xs mt-2 space-y-1 opacity-75">
-            <div>Table profiles: {status.profilesTableExists ? '✅' : '❌'}</div>
-            <div>RLS activé: {status.rlsEnabled ? '✅' : '❌'}</div>
-            <div className="mt-2 p-2 bg-red-100 rounded text-xs">
-              <strong>Actions à faire:</strong>
-              <ul className="list-disc list-inside mt-1 space-y-1">
-                <li>Vérifier la connexion Internet</li>
-                <li>Vérifier le DNS: nslookup jstgllotjifmgjxjsbpm.supabase.co</li>
-                <li>Ajouter les CORS dans Supabase Dashboard</li>
-                <li>Vérifier que la table "profiles" existe</li>
-                <li>Redémarrer le serveur: npm run dev</li>
-              </ul>
+          <div className="text-xs mt-2 space-y-2 bg-red-100 rounded p-2">
+            <div className="font-semibold">🔧 Solution rapide:</div>
+            <div>Lancez le Mock Server local:</div>
+            <div className="bg-red-900 text-red-100 p-1 rounded font-mono text-xs mt-1">
+              ./scripts/start-with-supabase.sh --local
             </div>
+            <div className="mt-2">Puis ouvrez: http://localhost:5173</div>
           </div>
         )}
       </AlertDescription>

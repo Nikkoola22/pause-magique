@@ -12,8 +12,8 @@ export interface ConnectionStatus {
 
 // Essayer plusieurs URLs/IPs en cas de problème DNS
 const SUPABASE_URLS = [
-  'https://jstgllotjifmgjxjsbpm.supabase.co',
-  'https://142.251.32.63', // Essayer une IP de backup
+  'http://localhost:3001', // Mock local (priorité haute)
+  'https://jstgllotjifmgjxjsbpm.supabase.co', // Supabase Cloud
 ];
 
 export const useSupabaseConnection = () => {
@@ -83,6 +83,8 @@ export const useSupabaseConnection = () => {
 
         // Test 2: Vérifier la connectivité réseau directe
         let networkOK = false;
+        let workingUrl = '';
+        
         for (const url of SUPABASE_URLS) {
           try {
             const response = await fetch(`${url}/rest/v1/`, {
@@ -90,12 +92,13 @@ export const useSupabaseConnection = () => {
               headers: {
                 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
               },
-              signal: AbortSignal.timeout(5000),
+              signal: AbortSignal.timeout(3000),
             });
             
-            if (response.ok || response.status === 401) {
+            if (response.ok || response.status === 401 || response.status === 404) {
               console.log(`✅ Connexion OK via ${url}`);
               networkOK = true;
+              workingUrl = url;
               profilesExists = true;
               hasRLS = true;
               break;
@@ -108,7 +111,7 @@ export const useSupabaseConnection = () => {
         setStatus({
           connected: networkOK && (profilesExists || hasRLS),
           loading: false,
-          error: networkOK ? null : 'Impossible de se connecter à Supabase. Vérifiez la connexion Internet.',
+          error: networkOK ? null : 'Impossible de se connecter à Supabase. Utilisez: ./scripts/start-with-supabase.sh --local',
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
           timestamp: new Date().toISOString(),
@@ -119,6 +122,7 @@ export const useSupabaseConnection = () => {
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
           networkOK,
+          workingUrl,
         });
 
       } catch (err: any) {

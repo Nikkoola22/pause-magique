@@ -2,8 +2,26 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://jstgllotjifmgjxjsbpm.supabase.co";
+// Déterminer l'URL Supabase à utiliser
+// Si le mock server local est disponible, l'utiliser
+// Sinon, utiliser Supabase Cloud
+const getSupabaseUrl = () => {
+  const envUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (envUrl) return envUrl;
+  
+  // Essayer le mock local d'abord
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3001';
+  }
+  
+  // Fallback à Supabase Cloud
+  return "https://jstgllotjifmgjxjsbpm.supabase.co";
+};
+
+const SUPABASE_URL = getSupabaseUrl();
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpzdGdsbG90amlmbWdqeGpzYnBtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4NzA0NDIsImV4cCI6MjA3MzQ0NjQ0Mn0.g-Zllg8NqrqNg-do5v2TCakK4RXUb6KAyvhS_yEiks4";
+
+console.log('🔌 Supabase URL:', SUPABASE_URL);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
