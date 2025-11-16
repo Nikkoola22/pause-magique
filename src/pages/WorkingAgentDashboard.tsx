@@ -98,15 +98,34 @@ const WorkingAgentDashboard = () => {
   const deductRTTFromRequest = (request: any): number => {
     if (request.leave_type !== 'RTT') return 0;
     
-    const startDate = new Date(request.start_date);
-    const endDate = new Date(request.end_date);
-    let totalHours = 0;
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      totalHours += getWorkingHoursForDay(d.toISOString().split('T')[0]);
+    try {
+      const [startYear, startMonth, startDay] = request.start_date.split('-').map(Number);
+      const [endYear, endMonth, endDay] = request.end_date.split('-').map(Number);
+      
+      // Validation des dates
+      if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay)) {
+        console.warn('⚠️ Format de date invalide pour start_date:', request.start_date);
+        return 0;
+      }
+      
+      const startDate = new Date(startYear, startMonth - 1, startDay);
+      const endDate = new Date(endYear, endMonth - 1, endDay);
+      
+      let totalHours = 0;
+      const currentDate = new Date(startDate);
+      
+      // Boucle correcte pour éviter la boucle infinie
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        totalHours += getWorkingHoursForDay(dateStr);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return totalHours;
+    } catch (error) {
+      console.error('❌ Erreur dans deductRTTFromRequest:', error, request);
+      return 0;
     }
-    
-    return totalHours;
   };
 
   // Fonction pour récupérer les horaires de travail du planning pour une date donnée
@@ -218,8 +237,21 @@ const WorkingAgentDashboard = () => {
     const [startYear, startMonth, startDay] = newRequest.start_date.split('-').map(Number);
     const [endYear, endMonth, endDay] = newRequest.end_date.split('-').map(Number);
     
+    // Validation des dates
+    if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) ||
+        isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
+      alert('Veuillez entrer des dates valides');
+      return;
+    }
+    
     const startDate = new Date(startYear, startMonth - 1, startDay);
     const endDate = new Date(endYear, endMonth - 1, endDay);
+    
+    // Vérifier que startDate <= endDate
+    if (startDate > endDate) {
+      alert('La date de fin doit être après la date de début');
+      return;
+    }
     
     let daysCount = 0;
     let rttHours = 0;

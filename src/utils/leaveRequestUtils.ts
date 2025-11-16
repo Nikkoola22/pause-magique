@@ -65,8 +65,21 @@ export function updateScheduleWithLeave(
   const [startYear, startMonth, startDay] = leave.start_date.split('-').map(Number);
   const [endYear, endMonth, endDay] = leave.end_date.split('-').map(Number);
   
+  // Validation des dates
+  if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) ||
+      isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
+    console.error('❌ Dates invalides:', { start: leave.start_date, end: leave.end_date });
+    return updatedSchedules;
+  }
+  
   const startDate = new Date(startYear, startMonth - 1, startDay);
   const endDate = new Date(endYear, endMonth - 1, endDay);
+  
+  // Vérifier que startDate <= endDate
+  if (startDate > endDate) {
+    console.error('❌ Date de fin antérieure à la date de début');
+    return updatedSchedules;
+  }
   
   console.log('📅 Parcours des jours de congé:', {
     start: leave.start_date,

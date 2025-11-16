@@ -68,16 +68,33 @@ const AgentLeaveRights: React.FC<AgentLeaveRightsProps> = ({
   const deductRTTFromRequest = (request: LeaveRequest): number => {
     if (request.leave_type !== 'RTT') return 0;
     
-    const startDate = new Date(request.start_date);
-    const endDate = new Date(request.end_date);
-    let totalHours = 0;
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
-      totalHours += getWorkingHoursForDay(dateStr);
+    try {
+      const [startYear, startMonth, startDay] = request.start_date.split('-').map(Number);
+      const [endYear, endMonth, endDay] = request.end_date.split('-').map(Number);
+      
+      // Validation des dates
+      if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay)) {
+        console.warn('⚠️ Format de date invalide:', request.start_date);
+        return 0;
+      }
+      
+      const startDate = new Date(startYear, startMonth - 1, startDay);
+      const endDate = new Date(endYear, endMonth - 1, endDay);
+      let totalHours = 0;
+      
+      // Boucle correcte pour éviter la boucle infinie
+      const currentDate = new Date(startDate);
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0];
+        totalHours += getWorkingHoursForDay(dateStr);
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      return totalHours;
+    } catch (error) {
+      console.error('❌ Erreur dans deductRTTFromRequest:', error);
+      return 0;
     }
-    
-    return totalHours;
   };
 
   // Calculer le résumé RTT
