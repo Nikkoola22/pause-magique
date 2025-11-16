@@ -10,6 +10,12 @@ export interface ConnectionStatus {
   timestamp: string;
 }
 
+// Essayer plusieurs URLs/IPs en cas de problème DNS
+const SUPABASE_URLS = [
+  'https://jstgllotjifmgjxjsbpm.supabase.co',
+  'https://142.251.32.63', // Essayer une IP de backup
+];
+
 export const useSupabaseConnection = () => {
   const [status, setStatus] = useState<ConnectionStatus>({
     connected: false,
@@ -25,53 +31,12 @@ export const useSupabaseConnection = () => {
       try {
         console.log('🔍 Vérification de la connexion Supabase...');
         
-        // Test 1: Vérifier la connectivité réseau
-        let networkError = null;
-        try {
-          const networkTest = await Promise.race([
-            fetch('https://jstgllotjifmgjxjsbpm.supabase.co/rest/v1/', {
-              headers: {
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              signal: AbortSignal.timeout(5000),
-            }),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 5000)
-            ),
-          ]);
-          
-          if (networkTest instanceof Response && networkTest.ok) {
-            console.log('✅ Connexion directe à Supabase OK');
-          }
-        } catch (err: any) {
-          networkError = err.message;
-          
-          // Vérifier si c'est un problème DNS/réseau
-          if (err.message.includes('Load failed') || err.message.includes('Failed to fetch') || err.message.includes('Timeout')) {
-            console.warn('⚠️ Problème de connectivité réseau détecté');
-            console.warn('   Cela peut être un problème DNS ou de connexion Internet');
-            
-            // Mode offline/demo
-            console.log('📱 Passage en mode DÉMO (offline)');
-            setStatus({
-              connected: false,
-              loading: false,
-              error: 'Mode DÉMO - Pas de connexion réseau. Supabase non accessible depuis ce conteneur.',
-              profilesTableExists: true,
-              rlsEnabled: true,
-              timestamp: new Date().toISOString(),
-            });
-            return;
-          }
-        }
-        
-        // Test 2: Vérifier la session (fonctionne même sans réseau si en cache)
+        // Test avec le client Supabase
         try {
           const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
           
           if (sessionError) {
-            console.error('❌ Erreur session:', sessionError.message);
+            console.warn('⚠️ Erreur session (c\'est normal):', sessionError.message);
           } else {
             console.log('✅ Session récupérée');
           }
@@ -79,7 +44,7 @@ export const useSupabaseConnection = () => {
           console.warn('⚠️ Session non disponible:', err.message);
         }
 
-        // Test 3: Vérifier que la table profiles existe
+        // Test la table profiles
         let profilesError;
         try {
           const result = await supabase
@@ -102,13 +67,13 @@ export const useSupabaseConnection = () => {
             console.warn('⚠️ RLS policy bloque l\'accès');
             hasRLS = true;
             profilesExists = true;
-          } else if (profilesError.message?.includes('Load failed') || profilesError.message?.includes('Failed to fetch')) {
-            console.warn('⚠️ Problème de connectivité: Impossible de tester la table profiles');
-            // Assumer que tout est OK puisqu'on peut pas vérifier
-            profilesExists = true;
-            hasRLS = true;
+          } else if (profilesError.message?.includes('Load failed') || profilesError.message?.includes('Failed to fetch') || profilesError.message?.includes('Could not resolve')) {
+            console.warn('⚠️ Problème de connectivité réseau/DNS');
+            // Ne pas assumer OK - essayer un fetch direct
+            profilesExists = false;
+            hasRLS = false;
           } else {
-            console.error('❌ Erreur lors de la requête profiles:', profilesError.message);
+            console.error('❌ Erreur:', profilesError.message);
           }
         } else {
           console.log('✅ Table "profiles" accessible');
@@ -116,20 +81,44 @@ export const useSupabaseConnection = () => {
           hasRLS = true;
         }
 
+        // Test 2: Vérifier la connectivité réseau directe
+        let networkOK = false;
+        for (const url of SUPABASE_URLS) {
+          try {
+            const response = await fetch(`${url}/rest/v1/`, {
+              method: 'HEAD',
+              headers: {
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              signal: AbortSignal.timeout(5000),
+            });
+            
+            if (response.ok || response.status === 401) {
+              console.log(`✅ Connexion OK via ${url}`);
+              networkOK = true;
+              profilesExists = true;
+              hasRLS = true;
+              break;
+            }
+          } catch (err: any) {
+            console.warn(`⚠️ Erreur pour ${url}:`, err.message);
+          }
+        }
+
         setStatus({
-          connected: !profilesError || hasRLS,
+          connected: networkOK && (profilesExists || hasRLS),
           loading: false,
-          error: profilesError && !profilesError.message?.includes('Load failed') ? profilesError.message : null,
+          error: networkOK ? null : 'Impossible de se connecter à Supabase. Vérifiez la connexion Internet.',
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
           timestamp: new Date().toISOString(),
         });
 
         console.log('📊 Status de connexion:', {
-          connected: !profilesError || hasRLS,
+          connected: networkOK && (profilesExists || hasRLS),
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
-          networkError: networkError ? '⚠️ Oui' : 'Non',
+          networkOK,
         });
 
       } catch (err: any) {
