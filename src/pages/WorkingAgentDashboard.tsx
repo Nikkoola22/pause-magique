@@ -226,32 +226,43 @@ const WorkingAgentDashboard = () => {
   };
 
   const handleCreateRequest = () => {
-    console.log('🔄 Création d\'une nouvelle demande:', newRequest);
-    
-    if (!newRequest.leave_type || !newRequest.start_date || !newRequest.end_date) {
-      alert('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
+    try {
+      console.log('🔄 Création d\'une nouvelle demande:', newRequest);
+      
+      if (!newRequest.leave_type || !newRequest.start_date || !newRequest.end_date) {
+        throw new Error('Veuillez remplir tous les champs obligatoires');
+      }
 
-    // Calculer le nombre de jours et les heures RTT
-    const [startYear, startMonth, startDay] = newRequest.start_date.split('-').map(Number);
-    const [endYear, endMonth, endDay] = newRequest.end_date.split('-').map(Number);
-    
-    // Validation des dates
-    if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) ||
-        isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
-      alert('Veuillez entrer des dates valides');
-      return;
-    }
-    
-    const startDate = new Date(startYear, startMonth - 1, startDay);
-    const endDate = new Date(endYear, endMonth - 1, endDay);
-    
-    // Vérifier que startDate <= endDate
-    if (startDate > endDate) {
-      alert('La date de fin doit être après la date de début');
-      return;
-    }
+      // Validation du format de date (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(newRequest.start_date) || !dateRegex.test(newRequest.end_date)) {
+        throw new Error('Format de date invalide. Utilisez le format YYYY-MM-DD');
+      }
+
+      // Calculer le nombre de jours et les heures RTT
+      const [startYear, startMonth, startDay] = newRequest.start_date.split('-').map(Number);
+      const [endYear, endMonth, endDay] = newRequest.end_date.split('-').map(Number);
+      
+      // Validation des dates
+      if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) ||
+          isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
+        throw new Error('Dates invalides: composants non-numériques');
+      }
+      
+      const startDate = new Date(startYear, startMonth - 1, startDay);
+      const endDate = new Date(endYear, endMonth - 1, endDay);
+      
+      // Vérifier que la date de fin >= date de début
+      if (startDate > endDate) {
+        throw new Error('La date de fin doit être >= la date de début');
+      }
+      
+      // Vérifier que ce n\'est pas dans le passé
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (endDate < today) {
+        throw new Error('Impossible de créer une demande pour des dates passées');
+      }
     
     let daysCount = 0;
     let rttHours = 0;
@@ -365,7 +376,11 @@ const WorkingAgentDashboard = () => {
     });
     setShowCreateForm(false);
 
-    alert('Demande créée avec succès !');
+    alert('✅ Demande créée avec succès !');
+    } catch (error) {
+      console.error('❌ Erreur lors de la création:', error);
+      alert('❌ Erreur: ' + (error instanceof Error ? error.message : 'Une erreur est survenue'));
+    }
   };
 
   if (loading) {

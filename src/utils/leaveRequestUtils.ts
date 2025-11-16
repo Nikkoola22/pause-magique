@@ -88,6 +88,22 @@ export function updateScheduleWithLeave(
     endDate: endDate.toLocaleDateString('fr-FR')
   });
   
+  // Cas limite: vérifier qu'il y a au moins 1 jour ouvrable
+  let businessDayCount = 0;
+  let tempDate = new Date(startDate);
+  while (tempDate <= endDate) {
+    const dayOfWeek = tempDate.getDay();
+    if (dayOfWeek !== 0) { // Pas dimanche
+      businessDayCount++;
+    }
+    tempDate.setDate(tempDate.getDate() + 1);
+  }
+  
+  if (businessDayCount === 0) {
+    console.warn('⚠️ ATTENTION: Aucun jour ouvrable dans cette plage de dates (congé sur dimanche seulement)');
+    return updatedSchedules;
+  }
+  
   // Parcourir chaque jour du congé
   const currentDate = new Date(startDate);
   while (currentDate <= endDate) {

@@ -140,14 +140,14 @@ const ManagerDashboard = () => {
   }, []);
 
   const handleApproveRequest = (requestId: string) => {
-    console.log('✅ Approuver la demande:', requestId);
-    
-    // Trouver la demande concernée
-    const approvedRequest = leaveRequests.find(req => req.id === requestId);
-    if (!approvedRequest) {
-      console.error('Demande non trouvée:', requestId);
-      return;
-    }
+    try {
+      console.log('✅ Approuver la demande:', requestId);
+      
+      // Trouver la demande concernée
+      const approvedRequest = leaveRequests.find(req => req.id === requestId);
+      if (!approvedRequest) {
+        throw new Error('Demande non trouvée: ' + requestId);
+      }
 
     // Obtenir l'ID agent depuis agent_id (priorité) ou employee_name
     let agentId = (approvedRequest as any).agent_id || approvedRequest.employee_name;
@@ -197,33 +197,56 @@ const ManagerDashboard = () => {
       console.log('📅 Congé appliqué au planning de:', agent.name);
     }
 
-    toast({
-      title: "Demande approuvée",
-      description: `La demande de congé a été approuvée et le planning a été mis à jour.`,
-    });
+      toast({
+        title: "✅ Demande approuvée",
+        description: `La demande de congé a été approuvée et le planning a été mis à jour.`,
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'approbation:', error);
+      toast({
+        title: "❌ Erreur lors de l'approbation",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleRejectRequest = (requestId: string) => {
-    console.log('❌ Refuser la demande:', requestId);
-    setLeaveRequests(prev => {
-      const updated = prev.map(req => 
-        req.id === requestId 
-          ? { ...req, status: 'refuse' as const }
-          : req
-      );
-      console.log('📋 Demandes mises à jour après refus:', updated);
+    try {
+      console.log('❌ Refuser la demande:', requestId);
       
-      // Mettre à jour localStorage
-      localStorage.setItem('all_leave_requests', JSON.stringify(updated));
-      console.log('💾 localStorage mis à jour après refus');
+      const rejectedRequest = leaveRequests.find(req => req.id === requestId);
+      if (!rejectedRequest) {
+        throw new Error('Demande non trouvée: ' + requestId);
+      }
       
-      return updated;
-    });
-    
-    toast({
-      title: "Demande refusée",
-      description: "La demande de congé a été refusée.",
-    });
+      setLeaveRequests(prev => {
+        const updated = prev.map(req => 
+          req.id === requestId 
+            ? { ...req, status: 'refuse' as const }
+            : req
+        );
+        console.log('📋 Demandes mises à jour après refus:', updated);
+        
+        // Mettre à jour localStorage
+        localStorage.setItem('all_leave_requests', JSON.stringify(updated));
+        console.log('💾 localStorage mis à jour après refus');
+        
+        return updated;
+      });
+      
+      toast({
+        title: "✅ Demande refusée",
+        description: `La demande de ${rejectedRequest.employee_name} a été refusée.`,
+      });
+    } catch (error) {
+      console.error('❌ Erreur lors du refus:', error);
+      toast({
+        title: "❌ Erreur lors du refus",
+        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogout = () => {
