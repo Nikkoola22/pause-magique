@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Clock, Users, Save, Eye, Repeat } from "lucide-react";
 import CalendarPicker from "./CalendarPicker";
 import ReadOnlySchedule from "./ReadOnlySchedule";
+import { saveAgentPlanning, getAllAgentPlannings } from "../lib/agentPlanningApi";
 
 interface ScheduleSlot {
   day: string;
@@ -29,38 +30,37 @@ interface WeeklyScheduleProps {
   forceViewMode?: boolean;
 }
 
+const generateTimeSlots = () => {
+  const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+  const timeSlots = [];
+  
+  for (const day of days) {
+    // Lundi à Vendredi : Matin, Midi, Après-midi
+    if (day !== 'Samedi') {
+      timeSlots.push(
+        { day, time: 'Matin', status: 'working' as const, startTime: '08:00', endTime: '12:00' },
+        { day, time: 'Midi', status: 'break' as const, startTime: '12:00', endTime: '13:00' },
+        { day, time: 'Après-midi', status: 'working' as const, startTime: '13:00', endTime: '17:00' }
+      );
+    } else {
+      // Samedi : Matin seulement
+      timeSlots.push(
+        { day, time: 'Matin', status: 'working' as const, startTime: '08:00', endTime: '13:00' }
+      );
+    }
+  }
+  
+  return timeSlots;
+};
+
 const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) => {
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [schedule, setSchedule] = useState<ScheduleSlot[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleSlot[]>(generateTimeSlots());
   const [savedSchedules, setSavedSchedules] = useState<{[key: string]: ScheduleSlot[]}>({});
   const [viewMode, setViewMode] = useState<'edit' | 'view'>(forceViewMode ? 'view' : 'edit');
   const [editingTimeSlot, setEditingTimeSlot] = useState<{day: string, time: string} | null>(null);
   const [repeatWeekly, setRepeatWeekly] = useState<boolean>(false);
-
-  // Génération des créneaux horaires avec labels lisibles
-  const generateTimeSlots = () => {
-    const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-    const timeSlots = [];
-    
-    for (const day of days) {
-      // Lundi à Vendredi : Matin, Midi, Après-midi
-      if (day !== 'Samedi') {
-        timeSlots.push(
-          { day, time: 'Matin', status: 'working' as const, startTime: '08:00', endTime: '12:00' },
-          { day, time: 'Midi', status: 'break' as const, startTime: '12:00', endTime: '13:00' },
-          { day, time: 'Après-midi', status: 'working' as const, startTime: '13:00', endTime: '17:00' }
-        );
-      } else {
-        // Samedi : Matin seulement
-        timeSlots.push(
-          { day, time: 'Matin', status: 'working' as const, startTime: '08:00', endTime: '13:00' }
-        );
-      }
-    }
-    
-    return timeSlots;
-  };
 
   // Structure des créneaux par jour
   const getTimeSlotsForDay = (day: string) => {
@@ -193,28 +193,23 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
     // Vérifier l'année 2025 spécifiquement
     const targetYear = 2025;
     const startOfYear = new Date(targetYear, 0, 1);
-    
-    // Calculer le lundi de la première semaine de 2025
-    const firstMonday = new Date(startOfYear);
-    const dayOfWeek = firstMonday.getDay();
-    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    firstMonday.setDate(firstMonday.getDate() + daysToMonday);
-    
-    let weeksWithPlanning = 0;
+    const currentWeekStart = new Date(selectedDate);
+    currentWeekStart.setDate(currentWeekStart.getDate() - (currentWeekStart.getDay() === 0 ? 6 : currentWeekStart.getDay() - 1));
+    let weeksUpdated = 0;
     
     // Vérifier les 52 semaines de 2025
     for (let week = 0; week < 52; week++) {
-      const weekDate = new Date(firstMonday);
-      weekDate.setDate(firstMonday.getDate() + (week * 7));
+      const weekDate = new Date(startOfYear);
+      weekDate.setDate(startOfYear.getDate() + (week * 7));
       const key = getScheduleKey(agentId, weekDate);
       
       if (savedSchedules[key]) {
-        weeksWithPlanning++;
+        weeksUpdated++;
       }
     }
     
     // Si plus de 40 semaines ont ce planning, on considère qu'il est répété
-    return weeksWithPlanning >= 40;
+    return weeksUpdated >= 40;
   };
 
   // NOUVELLE FONCTION POUR CHARGER UN PLANNING EXISTANT
@@ -288,6 +283,55 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
     }
   };
 
+  // Auto-select agent if only one is provided
+  useEffect(() => {
+    if (agents.length === 1 && !selectedAgent) {
+      setSelectedAgent(agents[0].id);
+    }
+  }, [agents]);
+
+  // Load from Supabase when agent changes
+  useEffect(() => {
+    const fetchSupabasePlannings = async () => {
+      if (!selectedAgent) return;
+      
+      console.log('🔄 Chargement des plannings Supabase pour:', selectedAgent);
+      try {
+        const { data, error } = await getAllAgentPlannings(selectedAgent);
+        
+        if (error) {
+          console.error('❌ Erreur chargement Supabase:', error);
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          console.log(`✅ ${data.length} plannings chargés depuis Supabase`);
+          
+          setSavedSchedules(prev => {
+            const newSchedules = { ...prev };
+            data.forEach((item: any) => {
+              if (item.week && item.planning) {
+                newSchedules[item.week] = item.planning;
+              }
+            });
+            return newSchedules;
+          });
+          
+          // Force reload of current view if needed
+          if (selectedDate) {
+             // Trigger a re-render or re-evaluation of getExistingSchedule
+             // But since savedSchedules changes, the other useEffect dependent on it will fire?
+             // Yes: useEffect(() => { ... loadSchedule ... }, [..., savedSchedules])
+          }
+        }
+      } catch (err) {
+        console.error('❌ Exception chargement Supabase:', err);
+      }
+    };
+
+    fetchSupabasePlannings();
+  }, [selectedAgent]);
+
   // Gestion du changement d'agent ou de date
   useEffect(() => {
     if (selectedAgent) {
@@ -304,10 +348,7 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
     }
   }, [selectedAgent]);
 
-  // Initialiser le planning
-  useState(() => {
-    setSchedule(generateTimeSlots());
-  });
+
 
 
   const getStatusColor = (status: string) => {
@@ -344,7 +385,6 @@ const WeeklySchedule = ({ agents, forceViewMode = false }: WeeklyScheduleProps) 
     const newSavedSchedules = { ...savedSchedules };
     const supabaseSync = async () => {
       try {
-        const { saveAgentPlanning } = await import("../lib/agentPlanningApi");
         if (repeatWeekly) {
           const targetYear = 2025;
           const startOfYear = new Date(targetYear, 0, 1);

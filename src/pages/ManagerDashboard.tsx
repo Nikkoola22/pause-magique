@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { applyLeaveToSchedule, cancelLeaveFromSchedule, ScheduleSlot, getScheduleKey } from "@/utils/leaveRequestUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { saveAgentPlanning } from "@/lib/agentPlanningApi";
+import WeeklySchedule from "@/components/WeeklySchedule";
 
 interface LeaveRequest {
   id: string;
@@ -108,11 +109,47 @@ const ManagerDashboard = () => {
     setLeaveRequests(allRequests);
   };
 
-  const loadTeamMembers = () => {
-    // Pas de données mock - équipe vide par défaut
-    // Les membres d'équipe seront chargés depuis Supabase si nécessaire
-    setTeamMembers([]);
-    console.log('📝 Équipe vide - aucune donnée mock chargée');
+  const loadTeamMembers = async () => {
+    console.log('🔄 Chargement de l\'équipe depuis Supabase...');
+    try {
+      // Récupérer tous les profils qui ne sont pas des chefs de service
+      // Idéalement, on filtrerait par service si le manager a un service assigné
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .neq('role', 'chef_service');
+      
+      if (userSession?.service) {
+        // Si le manager a un service, on filtre (optionnel, selon règles métier)
+        // query = query.eq('service', userSession.service);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      if (data) {
+        // Calculer les demandes actives pour chaque membre
+        const members = data.map(p => {
+          const activeCount = leaveRequests.filter(
+            req => (req.agent_id === p.id || req.employee_name === p.full_name) && req.status === 'en_attente'
+          ).length;
+
+          return {
+            id: p.id,
+            name: p.full_name || p.username || 'Inconnu',
+            position: p.role,
+            service: p.service,
+            active_requests: activeCount
+          };
+        });
+
+        setTeamMembers(members);
+        console.log(`👥 ${members.length} membres d'équipe chargés`);
+      }
+    } catch (error) {
+      console.error('❌ Erreur chargement équipe:', error);
+    }
   };
 
   // Charger les plannings au démarrage
@@ -649,6 +686,11 @@ const ManagerDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Section Planning */}
+            <div className="mt-8">
+              <WeeklySchedule agents={teamMembers} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
