@@ -11,10 +11,27 @@ export interface ConnectionStatus {
 }
 
 // Essayer plusieurs URLs/IPs en cas de problème DNS
-const SUPABASE_URLS = [
-  'http://localhost:3001', // Mock local (priorité haute)
-  'https://jstgllotjifmgjxjsbpm.supabase.co', // Supabase Cloud
-];
+const getSupabaseUrls = () => {
+  const urls = [
+    'https://jstgllotjifmgjxjsbpm.supabase.co', // Supabase Cloud
+  ];
+  
+  // Ajouter l'URL locale/proxy si on est dans le navigateur
+  if (typeof window !== 'undefined') {
+    // Priorité à l'URL relative (proxy)
+    urls.unshift(window.location.origin);
+    
+    // Ajouter localhost si on est en local
+    if (window.location.hostname === 'localhost') {
+      urls.unshift('http://localhost:3001');
+    }
+  } else {
+    // En environnement Node/Test
+    urls.unshift('http://localhost:3001');
+  }
+  
+  return urls;
+};
 
 export const useSupabaseConnection = () => {
   const [status, setStatus] = useState<ConnectionStatus>({
@@ -30,6 +47,7 @@ export const useSupabaseConnection = () => {
     const checkConnection = async () => {
       try {
         console.log('🔍 Vérification de la connexion Supabase...');
+        const SUPABASE_URLS = getSupabaseUrls();
         
         // Test avec le client Supabase
         try {
@@ -111,7 +129,7 @@ export const useSupabaseConnection = () => {
         setStatus({
           connected: networkOK && (profilesExists || hasRLS),
           loading: false,
-          error: networkOK ? null : 'Impossible de se connecter à Supabase. Utilisez: ./scripts/start-with-supabase.sh --local',
+          error: networkOK ? null : 'Impossible de se connecter à Supabase. Vérifiez que le serveur est lancé avec ./scripts/start-with-supabase.sh --local',
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
           timestamp: new Date().toISOString(),

@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import AgentPersonalInfo from "@/components/AgentPersonalInfo";
 import AgentLeaveRights from "@/components/AgentLeaveRights";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LeaveRequest {
   id: string;
@@ -34,6 +35,8 @@ interface LeaveRequest {
   created_at: string;
   approved_at?: string;
   comments?: string;
+  employee_name?: string;
+  agent_id?: string;
 }
 
 const AgentDashboard = () => {
@@ -58,7 +61,6 @@ const AgentDashboard = () => {
         if (agentRoles.includes(userData.role)) {
           console.log('Agent authorized with role:', userData.role);
           setUserSession(userData);
-          loadLeaveRequests();
         } else {
           console.log('User role not authorized:', userData.role);
           sessionStorage.removeItem('user_session');
@@ -72,24 +74,48 @@ const AgentDashboard = () => {
     }
   }, []);
 
-  const loadLeaveRequests = () => {
-    // Charger depuis all_leave_requests (source unique de vérité)
-    const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
-    
-    // Filtrer seulement les nouvelles demandes (après 2025-09-20)
-    const newRequests = allRequests.filter(req => {
-      // Ne garder que les demandes créées après le 20/09/2025 (nouvelles demandes)
-      return new Date(req.created_at) > new Date('2025-09-20T00:00:00Z');
-    });
-    
-    // Trier par date de création (plus récent en premier)
-    newRequests.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    console.log(`📋 ${newRequests.length} nouvelles demandes chargées`);
-    setLeaveRequests(newRequests);
+  useEffect(() => {
+    if (userSession) {
+      loadLeaveRequests();
+    }
+  }, [userSession]);
+
+  const loadLeaveRequests = async () => {
+    if (!userSession?.id) return;
+
+    try {
+      console.log('🔄 Chargement des demandes depuis Supabase...');
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('agent_id', userSession.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erreur Supabase:', error);
+        // Fallback localStorage si erreur (ex: table n'existe pas encore)
+        loadFromLocalStorage();
+        return;
+      }
+
+      if (data) {
+        console.log(`📋 ${data.length} demandes chargées depuis Supabase`);
+        setLeaveRequests(data as LeaveRequest[]);
+      }
+    } catch (err) {
+      console.error('❌ Exception chargement:', err);
+      loadFromLocalStorage();
+    }
   };
 
-  const handleCreateRequest = () => {
+  const loadFromLocalStorage = () => {
+    console.log('⚠️ Utilisation du localStorage (fallback)');
+    const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
+    const userRequests = allRequests.filter((req: any) => req.agent_id === userSession.id || !req.agent_id); // !req.agent_id pour compatibilité
+    setLeaveRequests(userRequests);
+  };
+
+  const handleCreateRequest = async () => {
     if (!newRequest.leave_type || !newRequest.start_date || !newRequest.end_date) {
       toast({
         title: "Erreur",
@@ -103,19 +129,6 @@ const AgentDashboard = () => {
     const endDate = new Date(newRequest.end_date);
     const daysCount = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const request: LeaveRequest = {
-      id: Date.now().toString(),
-      ...newRequest,
-      days_count: daysCount,
-      status: 'en_attente',
-      created_at: new Date().toISOString()
-    };
-
-    setLeaveRequests(prev => [request, ...prev]);
-    
-    // Sauvegarder dans localStorage pour synchronisation avec le responsable
-    const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
-    
     // Déterminer le nom de l'employé
     let employeeName = 'Agent Inconnu';
     if (userSession?.name) {
@@ -125,28 +138,65 @@ const AgentDashboard = () => {
     } else if (userSession?.full_name) {
       employeeName = userSession.full_name;
     }
-    
-    const requestWithEmployeeName = {
-      ...request,
-      employee_name: employeeName
-    };
-    
-    allRequests.unshift(requestWithEmployeeName);
-    localStorage.setItem('all_leave_requests', JSON.stringify(allRequests));
-    console.log('💾 Demande sauvegardée pour le responsable:', requestWithEmployeeName);
-    
-    setNewRequest({
-      leave_type: '',
-      start_date: '',
-      end_date: '',
-      reason: ''
-    });
-    setShowCreateForm(false);
 
-    toast({
-      title: "Demande créée",
-      description: "Votre demande de congé a été soumise avec succès.",
-    });
+    const requestData = {
+      leave_type: newRequest.leave_type,
+      start_date: newRequest.start_date,
+      end_date: newRequest.end_date,
+      days_count: daysCount,
+      reason: newRequest.reason,
+      status: 'en_attente',
+      agent_id: userSession.id,
+      employee_name: employeeName,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      // Sauvegarde Supabase
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .insert([requestData])
+        .select();
+
+      if (error) throw error;
+
+      console.log('✅ Demande sauvegardée sur Supabase:', data);
+      
+      // Mise à jour UI
+      if (data && data[0]) {
+        setLeaveRequests(prev => [data[0] as LeaveRequest, ...prev]);
+      } else {
+        // Fallback si pas de retour data (mock server basic)
+        const mockReq = { ...requestData, id: Date.now().toString() } as LeaveRequest;
+        setLeaveRequests(prev => [mockReq, ...prev]);
+      }
+
+      // Sauvegarder aussi dans localStorage pour compatibilité avec d'autres pages non migrées
+      const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
+      allRequests.unshift({ ...requestData, id: Date.now().toString() });
+      localStorage.setItem('all_leave_requests', JSON.stringify(allRequests));
+
+      setNewRequest({
+        leave_type: '',
+        start_date: '',
+        end_date: '',
+        reason: ''
+      });
+      setShowCreateForm(false);
+
+      toast({
+        title: "Demande créée",
+        description: "Votre demande de congé a été soumise avec succès.",
+      });
+
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder la demande",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleLogout = () => {

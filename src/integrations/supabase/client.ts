@@ -6,7 +6,10 @@ import type { Database } from './types';
 // Si le mock server local est disponible, l'utiliser
 // Sinon, utiliser Supabase Cloud
 const getSupabaseUrl = () => {
-  const envUrl = import.meta.env.VITE_SUPABASE_URL;
+  // Safe access to import.meta.env for Node.js environments
+  const env = (import.meta as any).env;
+  const envUrl = env?.VITE_SUPABASE_URL;
+  
   if (envUrl) return envUrl;
   
   // Essayer le mock local d'abord
@@ -14,8 +17,18 @@ const getSupabaseUrl = () => {
     return 'http://localhost:3001';
   }
   
+  // En environnement de développement (ou script Node), utiliser le mock local par défaut
+  // si aucune URL n'est définie
+  if (typeof window === 'undefined') {
+    return 'http://localhost:3001';
+  }
+
+  // Si on est dans le navigateur mais pas sur localhost (ex: Codespace),
+  // on utilise l'URL relative pour passer par le proxy Vite
+  return window.location.origin;
+  
   // Fallback à Supabase Cloud
-  return "https://jstgllotjifmgjxjsbpm.supabase.co";
+  // return "https://jstgllotjifmgjxjsbpm.supabase.co";
 };
 
 const SUPABASE_URL = getSupabaseUrl();
@@ -26,9 +39,15 @@ console.log('🔌 Supabase URL:', SUPABASE_URL);
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+const storageAdapter = typeof localStorage !== 'undefined' ? localStorage : {
+  getItem: (key: string) => null,
+  setItem: (key: string, value: string) => {},
+  removeItem: (key: string) => {},
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: storageAdapter,
     persistSession: true,
     autoRefreshToken: true,
   }

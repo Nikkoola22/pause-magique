@@ -16,7 +16,9 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { applyLeaveToSchedule, cancelLeaveFromSchedule, ScheduleSlot } from "@/utils/leaveRequestUtils";
+import { applyLeaveToSchedule, cancelLeaveFromSchedule, ScheduleSlot, getScheduleKey } from "@/utils/leaveRequestUtils";
+import { supabase } from "@/integrations/supabase/client";
+import { saveAgentPlanning } from "@/lib/agentPlanningApi";
 
 interface LeaveRequest {
   id: string;
@@ -31,6 +33,7 @@ interface LeaveRequest {
   reason?: string;
   status: 'en_attente' | 'approuve' | 'refuse';
   created_at: string;
+  agent_id?: string;
 }
 
 interface TeamMember {
@@ -54,8 +57,6 @@ const ManagerDashboard = () => {
         const userData = JSON.parse(session);
         if (userData.role === 'chef_service') {
           setUserSession(userData);
-          loadLeaveRequests();
-          loadTeamMembers();
         } else {
           console.log('User role not authorized:', userData.role);
           sessionStorage.removeItem('user_session');
@@ -69,51 +70,42 @@ const ManagerDashboard = () => {
     }
   }, []);
 
-  const loadLeaveRequests = () => {
-    console.log('🔄 Chargement des demandes de congés depuis les dashboards agents...');
-    
-    // Nettoyer localStorage des données mock/anciennes
-    const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
-    
-    // Filtrer pour garder uniquement les vraies demandes des agents
-    const realRequests = allRequests.filter(req => {
-      // Garder toutes les demandes qui ont un nom d'employé
-      const hasEmployeeName = req.employee_name && req.employee_name.trim() !== '';
-      
-      // Garder les demandes qui ne sont pas des exemples/démos
-      const isNotExample = !req.reason?.toLowerCase().includes('exemple') && 
-                          !req.reason?.toLowerCase().includes('demonstration') &&
-                          !req.reason?.toLowerCase().includes('demo') &&
-                          !req.reason?.toLowerCase().includes('test');
-      
-      // Garder les demandes récentes (après 2024-01-01 pour être plus permissif)
-      const isRecent = new Date(req.created_at) > new Date('2024-01-01');
-      
-      console.log(`Demande ${req.employee_name}: hasEmployeeName=${hasEmployeeName}, isNotExample=${isNotExample}, isRecent=${isRecent}`);
-      
-      return hasEmployeeName && isNotExample && isRecent;
-    });
-    
-    console.log('💾 Demandes filtrées (vraies demandes agents):', realRequests.length);
-    
-    // Afficher toutes les demandes pour débogage
-    if (realRequests.length > 0) {
-      console.log('📋 Détail des vraies demandes:');
-      realRequests.forEach((req, index) => {
-        console.log(`   ${index + 1}. ${req.employee_name} - ${req.leave_type} - ${req.status} (${req.created_at})`);
-      });
-    } else {
-      console.log('📝 Aucune vraie demande trouvée - les agents n\'ont pas encore créé de demandes');
+  useEffect(() => {
+    if (userSession) {
+      loadLeaveRequests();
+      loadTeamMembers();
     }
+  }, [userSession]);
+
+  const loadLeaveRequests = async () => {
+    console.log('🔄 Chargement des demandes de congés depuis Supabase...');
     
-    // Trier par date de création (plus récent en premier)
-    const sortedRequests = realRequests.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    
-    console.log('📋 Demandes chargées et triées:', sortedRequests.length);
-    console.log('📋 Demandes en attente:', sortedRequests.filter(req => req.status === 'en_attente').length);
-    setLeaveRequests(sortedRequests);
+    try {
+      const { data, error } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erreur Supabase:', error);
+        loadFromLocalStorage();
+        return;
+      }
+
+      if (data) {
+        console.log(`📋 ${data.length} demandes chargées depuis Supabase`);
+        setLeaveRequests(data as LeaveRequest[]);
+      }
+    } catch (err) {
+      console.error('❌ Exception chargement:', err);
+      loadFromLocalStorage();
+    }
+  };
+
+  const loadFromLocalStorage = () => {
+    console.log('⚠️ Utilisation du localStorage (fallback)');
+    const allRequests = JSON.parse(localStorage.getItem('all_leave_requests') || '[]');
+    setLeaveRequests(allRequests);
   };
 
   const loadTeamMembers = () => {
@@ -139,63 +131,94 @@ const ManagerDashboard = () => {
     loadSchedules();
   }, []);
 
-  const handleApproveRequest = (requestId: string) => {
+  const handleApproveRequest = async (requestId: string) => {
     try {
       console.log('✅ Approuver la demande:', requestId);
       
+      // Mise à jour Supabase
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({ status: 'approuve' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
       // Trouver la demande concernée
       const approvedRequest = leaveRequests.find(req => req.id === requestId);
       if (!approvedRequest) {
         throw new Error('Demande non trouvée: ' + requestId);
       }
 
-    // Obtenir l'ID agent depuis agent_id (priorité) ou employee_name
-    let agentId = (approvedRequest as any).agent_id || approvedRequest.employee_name;
-    
-    console.log('👤 Agent ID pour planning:', agentId);
-    
-    // Vérifier quand même dans agents_list pour la cohérence
-    const agents = JSON.parse(localStorage.getItem('agents_list') || '[]');
-    let agent = agents.find((a: any) => a.id === agentId || a.name === approvedRequest.employee_name);
-    
-    if (!agent) {
-      console.warn('⚠️ Agent non trouvé dans agents_list, utilisation de l\'ID:', agentId);
-      // Créer un agent temporaire
-      agent = {
-        id: agentId,
-        name: approvedRequest.employee_name
+      // Obtenir l'ID agent depuis agent_id (priorité) ou employee_name
+      let agentId = (approvedRequest as any).agent_id || approvedRequest.employee_name;
+      
+      console.log('👤 Agent ID pour planning:', agentId);
+      
+      // Vérifier quand même dans agents_list pour la cohérence
+      const agents = JSON.parse(localStorage.getItem('agents_list') || '[]');
+      let agent = agents.find((a: any) => a.id === agentId || a.name === approvedRequest.employee_name);
+      
+      if (!agent) {
+        console.warn('⚠️ Agent non trouvé dans agents_list, utilisation de l\'ID:', agentId);
+        // Créer un agent temporaire
+        agent = {
+          id: agentId,
+          name: approvedRequest.employee_name
+        };
+      }
+
+      // Créer une version approuvée de la demande pour applyLeaveToSchedule
+      const approvedLeaveRequest = {
+        ...approvedRequest,
+        status: 'approuve' as const
       };
-    }
 
-    // Créer une version approuvée de la demande pour applyLeaveToSchedule
-    const approvedLeaveRequest = {
-      ...approvedRequest,
-      status: 'approuve' as const
-    };
+      // Mettre à jour la demande dans leaveRequests
+      setLeaveRequests(prev => {
+        const updated = prev.map(req => 
+          req.id === requestId 
+            ? { ...req, status: 'approuve' as const }
+            : req
+        );
+        
+        // Mettre à jour localStorage pour compatibilité
+        localStorage.setItem('all_leave_requests', JSON.stringify(updated));
+        
+        return updated;
+      });
 
-    // Mettre à jour la demande dans leaveRequests
-    setLeaveRequests(prev => {
-      const updated = prev.map(req => 
-        req.id === requestId 
-          ? { ...req, status: 'approuve' as const }
-          : req
-      );
-      console.log('📋 Demandes mises à jour après approbation:', updated);
-      
-      // Mettre à jour localStorage
-      localStorage.setItem('all_leave_requests', JSON.stringify(updated));
-      console.log('💾 localStorage mis à jour après approbation');
-      
-      return updated;
-    });
+      // Appliquer le congé au planning avec la demande approuvée
+      if (agent && agent.id) {
+        const currentSchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
+        const updatedSchedules = applyLeaveToSchedule(agent.id, approvedLeaveRequest, currentSchedules);
+        setSchedules(updatedSchedules);
+        console.log('📅 Congé appliqué au planning de:', agent.name);
 
-    // Appliquer le congé au planning avec la demande approuvée
-    if (agent && agent.id) {
-      const currentSchedules = JSON.parse(localStorage.getItem('weeklySchedules') || '{}');
-      const updatedSchedules = applyLeaveToSchedule(agent.id, approvedLeaveRequest, currentSchedules);
-      setSchedules(updatedSchedules);
-      console.log('📅 Congé appliqué au planning de:', agent.name);
-    }
+        // Sauvegarder les modifications dans Supabase pour chaque semaine concernée
+        const startDate = new Date(approvedLeaveRequest.start_date);
+        const endDate = new Date(approvedLeaveRequest.end_date);
+        const processedKeys = new Set<string>();
+
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const weekKey = getScheduleKey(agent.id, currentDate);
+          
+          if (!processedKeys.has(weekKey) && updatedSchedules[weekKey]) {
+            processedKeys.add(weekKey);
+            console.log(`💾 Sauvegarde Supabase du planning pour la semaine: ${weekKey}`);
+            
+            // Appel asynchrone sans bloquer l'UI
+            saveAgentPlanning(agent.id, weekKey, updatedSchedules[weekKey])
+              .then(({ error }) => {
+                if (error) console.error(`❌ Erreur sauvegarde planning ${weekKey}:`, error);
+                else console.log(`✅ Planning ${weekKey} synchronisé avec Supabase`);
+              });
+          }
+          
+          // Avancer d'un jour
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+      }
 
       toast({
         title: "✅ Demande approuvée",
@@ -211,10 +234,18 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleRejectRequest = (requestId: string) => {
+  const handleRejectRequest = async (requestId: string) => {
     try {
       console.log('❌ Refuser la demande:', requestId);
       
+      // Mise à jour Supabase
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({ status: 'refuse' })
+        .eq('id', requestId);
+
+      if (error) throw error;
+
       const rejectedRequest = leaveRequests.find(req => req.id === requestId);
       if (!rejectedRequest) {
         throw new Error('Demande non trouvée: ' + requestId);
@@ -226,11 +257,9 @@ const ManagerDashboard = () => {
             ? { ...req, status: 'refuse' as const }
             : req
         );
-        console.log('📋 Demandes mises à jour après refus:', updated);
         
-        // Mettre à jour localStorage
+        // Mettre à jour localStorage pour compatibilité
         localStorage.setItem('all_leave_requests', JSON.stringify(updated));
-        console.log('💾 localStorage mis à jour après refus');
         
         return updated;
       });

@@ -23,14 +23,8 @@ if [ "$1" = "--local" ] || [ "$1" = "--mock" ]; then
   echo "📱 Mode LOCAL (Mock Supabase)"
   echo ""
   
-  # Installer les dépendances du mock si nécessaire
-  if ! command -v ts-node &> /dev/null; then
-    echo "📦 Installation de ts-node..."
-    npm install -D ts-node tsx 2>&1 | grep -v "warn"
-  fi
-  
   echo "🎯 Démarrage du Mock Supabase Server..."
-  SUPABASE_MOCK_PORT=3001 npx ts-node mock-supabase.ts &
+  SUPABASE_MOCK_PORT=3001 node mock-supabase.js &
   MOCK_PID=$!
   
   # Attendre que le mock server soit prêt
