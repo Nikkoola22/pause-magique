@@ -12,22 +12,23 @@ export interface ConnectionStatus {
 
 // Essayer plusieurs URLs/IPs en cas de problème DNS
 const getSupabaseUrls = () => {
+  // Priorité à l'URL Cloud officielle
   const urls = [
     'https://jstgllotjifmgjxjsbpm.supabase.co', // Supabase Cloud
   ];
   
-  // Ajouter l'URL locale/proxy si on est dans le navigateur
+  // Ajouter l'URL locale/proxy si on est dans le navigateur (fallback)
   if (typeof window !== 'undefined') {
     // Priorité à l'URL relative (proxy)
-    urls.unshift(window.location.origin);
+    urls.push(window.location.origin);
     
     // Ajouter localhost si on est en local
     if (window.location.hostname === 'localhost') {
-      urls.unshift('http://localhost:3001');
+      urls.push('http://localhost:3001');
     }
   } else {
     // En environnement Node/Test
-    urls.unshift('http://localhost:3001');
+    urls.push('http://localhost:3001');
   }
   
   return urls;
@@ -129,7 +130,7 @@ export const useSupabaseConnection = () => {
         setStatus({
           connected: networkOK && (profilesExists || hasRLS),
           loading: false,
-          error: networkOK ? null : 'Impossible de se connecter à Supabase. Vérifiez que le serveur est lancé avec ./scripts/start-with-supabase.sh --local',
+          error: networkOK ? null : 'Impossible de se connecter à Supabase (Cloud ou Local). Vérifiez votre connexion internet.',
           profilesTableExists: profilesExists,
           rlsEnabled: hasRLS,
           timestamp: new Date().toISOString(),

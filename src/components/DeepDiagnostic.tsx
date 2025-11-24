@@ -99,6 +99,38 @@ const DeepDiagnostic = () => {
       console.log('📊 Diagnostic complet:', analysis);
 
     } catch (error: any) {
+      // GESTION DU MODE HORS LIGNE (FALLBACK)
+      if (error.message === 'Failed to fetch' || error.message === 'Load failed' || error.name === 'TypeError') {
+        console.log('⚠️ Mode hors ligne détecté (Supabase inaccessible)');
+        
+        // Comptes de test codés en dur dans NewLoginPage.tsx
+        const localProfiles = [
+          { id: '00000000-0000-0000-0000-000000000000', full_name: 'Admin Système', role: 'admin', service: 'Administration' },
+          { id: '11111111-1111-1111-1111-111111111111', full_name: 'Responsable Médecine', role: 'chef_service', service: 'Médecine' },
+          { id: '22222222-2222-2222-2222-222222222222', full_name: 'Agent Un', role: 'employe', service: 'Médecine' },
+          { id: '33333333-3333-3333-3333-333333333333', full_name: 'Nat Danede', role: 'employe', service: 'Médecine' }
+        ];
+
+        const analysis = {
+          connection: false,
+          isOffline: true,
+          totalCount: localProfiles.length,
+          profilesRetrieved: localProfiles.length,
+          profiles: localProfiles,
+          step: 'analyse_locale',
+          details: {
+            byRole: { 'admin': 1, 'chef_service': 1, 'employe': 2 },
+            byService: { 'Administration': 1, 'Médecine': 3 },
+            uniqueIds: new Set(localProfiles.map(p => p.id)),
+            duplicateIds: []
+          },
+          error: "Supabase inaccessible - Mode Local Activé"
+        };
+        
+        setDiagnostic(analysis);
+        return;
+      }
+
       setDiagnostic({
         connection: false,
         error: error.message,
@@ -112,6 +144,7 @@ const DeepDiagnostic = () => {
 
   const getStatusColor = () => {
     if (!diagnostic) return 'gray';
+    if (diagnostic.isOffline) return 'orange'; // Couleur pour le mode hors ligne
     if (diagnostic.error) return 'red';
     if (diagnostic.totalCount === 12) return 'green';
     if (diagnostic.totalCount > 0) return 'yellow';
@@ -120,6 +153,7 @@ const DeepDiagnostic = () => {
 
   const getStatusIcon = () => {
     if (!diagnostic) return <Search className="h-5 w-5" />;
+    if (diagnostic.isOffline) return <Database className="h-5 w-5" />; // Icône pour le mode hors ligne
     if (diagnostic.error) return <AlertTriangle className="h-5 w-5" />;
     if (diagnostic.totalCount === 12) return <CheckCircle className="h-5 w-5" />;
     return <AlertTriangle className="h-5 w-5" />;
@@ -135,8 +169,8 @@ const DeepDiagnostic = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
-          <Badge variant={diagnostic?.connection ? 'default' : 'destructive'}>
-            {diagnostic?.connection ? 'Connexion OK' : 'Connexion ÉCHOUÉE'}
+          <Badge variant={diagnostic?.connection ? 'default' : (diagnostic?.isOffline ? 'secondary' : 'destructive')}>
+            {diagnostic?.connection ? 'Connexion OK' : (diagnostic?.isOffline ? 'Mode Local (Hors Ligne)' : 'Connexion ÉCHOUÉE')}
           </Badge>
           <Badge variant="outline">
             {diagnostic?.totalCount || 0} profil{diagnostic?.totalCount !== 1 ? 's' : ''} total
@@ -146,14 +180,25 @@ const DeepDiagnostic = () => {
           </Badge>
         </div>
 
-        {diagnostic?.error && (
+        {diagnostic?.error && !diagnostic?.isOffline && (
           <div className="p-3 bg-red-100 text-red-800 rounded-lg border border-red-200">
             <div className="font-semibold mb-1">❌ Erreur à l'étape "{diagnostic.step}":</div>
             <div className="text-sm">{diagnostic.error}</div>
           </div>
         )}
 
-        {diagnostic?.connection && !diagnostic.error && (
+        {diagnostic?.isOffline && (
+          <div className="p-3 bg-orange-100 text-orange-800 rounded-lg border border-orange-200">
+            <div className="font-semibold mb-1">⚠️ Mode Hors Ligne Activé</div>
+            <div className="text-sm">
+              La connexion à Supabase a échoué. L'application utilise les données locales et les comptes de test pour fonctionner.
+              <br/>
+              <strong>Comptes disponibles :</strong> Admin, Responsable Médecine, Agent 1, Agent 3.
+            </div>
+          </div>
+        )}
+
+        {(diagnostic?.connection || diagnostic?.isOffline) && (
           <div className="space-y-3">
             {/* Résumé */}
             <div className="p-3 bg-blue-100 text-blue-800 rounded-lg border border-blue-200">

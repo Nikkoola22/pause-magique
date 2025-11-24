@@ -144,15 +144,11 @@ const AgentScheduleSection = ({ agent }: AgentScheduleSectionProps) => {
     window.addEventListener('planningUpdated', handlePlanningUpdate);
     window.addEventListener('planningsUpdated', handlePlanningsUpdated);
     window.addEventListener('planningsUpdatedWithLeave', handlePlanningUpdate);
-    window.addEventListener('agentPlanningsLoaded', handlePlanningUpdate);
-    window.addEventListener('agentPlanningsNotFound', handlePlanningUpdate);
     
     return () => {
       window.removeEventListener('planningUpdated', handlePlanningUpdate);
       window.removeEventListener('planningsUpdated', handlePlanningsUpdated);
       window.removeEventListener('planningsUpdatedWithLeave', handlePlanningUpdate);
-      window.removeEventListener('agentPlanningsLoaded', handlePlanningUpdate);
-      window.removeEventListener('agentPlanningsNotFound', handlePlanningUpdate);
     };
   }, [agent?.id]);
 

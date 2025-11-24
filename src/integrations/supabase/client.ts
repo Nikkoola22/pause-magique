@@ -10,25 +10,17 @@ const getSupabaseUrl = () => {
   const env = (import.meta as any).env;
   const envUrl = env?.VITE_SUPABASE_URL;
   
+  // En local, on privilégie le proxy Vite (qui pointe vers le mock server ou le cloud selon config)
+  // Cela évite les problèmes de CORS et de DNS si internet est coupé
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    console.log('🔧 Mode Localhost détecté : Utilisation du proxy Vite pour Supabase');
+    return window.location.origin;
+  }
+  
   if (envUrl) return envUrl;
   
-  // Essayer le mock local d'abord
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3001';
-  }
-  
-  // En environnement de développement (ou script Node), utiliser le mock local par défaut
-  // si aucune URL n'est définie
-  if (typeof window === 'undefined') {
-    return 'http://localhost:3001';
-  }
-
-  // Si on est dans le navigateur mais pas sur localhost (ex: Codespace),
-  // on utilise l'URL relative pour passer par le proxy Vite
-  return window.location.origin;
-  
-  // Fallback à Supabase Cloud
-  // return "https://jstgllotjifmgjxjsbpm.supabase.co";
+  // Fallback to the real Supabase URL if env var is missing
+  return "https://jstgllotjifmgjxjsbpm.supabase.co";
 };
 
 const SUPABASE_URL = getSupabaseUrl();

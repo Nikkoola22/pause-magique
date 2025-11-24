@@ -4,7 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 const localAgents = [];
 
 // Récupérer les URLs et clés depuis les variables d'environnement
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const getSupabaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return window.location.origin;
+  }
+  return import.meta.env.VITE_SUPABASE_URL || 'https://jstgllotjifmgjxjsbpm.supabase.co';
+};
+
+const SUPABASE_URL = getSupabaseUrl();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
 
 export const migrateLocalDataToSupabase = async () => {

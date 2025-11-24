@@ -12,6 +12,7 @@ import WorkingAgentDashboard from "./pages/WorkingAgentDashboard";
 import NewAgentDashboard from "./pages/NewAgentDashboard";
 import TestPage from "./pages/TestPage";
 import Dashboard from "./pages/Dashboard";
+import AgentDashboard from "./pages/AgentDashboard";
 import AgentPage from "./pages/AgentPage";
 import NotFound from "./pages/NotFound";
 import SupabaseInitPage from "./pages/SupabaseInitPage";
@@ -45,7 +46,7 @@ const AppRoutes = () => {
         <Route path="/debug" element={<DebugDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/manager-dashboard" element={<WorkingManagerDashboard />} />
-        <Route path="/agent-dashboard" element={<WorkingAgentDashboard />} />
+        <Route path="/agent-dashboard" element={<AgentDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/agent/:id" element={<AgentPage />} />
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

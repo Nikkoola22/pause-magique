@@ -48,6 +48,7 @@ const AgentPersonalInfo: React.FC<AgentPersonalInfoProps> = ({
   };
 
   const getInitials = (name: string) => {
+    if (!name) return '??';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
@@ -67,7 +68,7 @@ const AgentPersonalInfo: React.FC<AgentPersonalInfoProps> = ({
               {getInitials(agent.name)}
             </div>
             <div className="flex-1">
-              <h2 className="text-xl font-semibold">{agent.name}</h2>
+              <h2 className="text-xl font-semibold">{agent.name || 'Nom inconnu'}</h2>
               <p className="text-gray-600">{getRoleLabel(agent.role)}</p>
               {/* Debug: Afficher le rôle brut pour vérification */}
               <p className="text-xs text-gray-400">Rôle brut: {agent.role}</p>
@@ -83,7 +84,7 @@ const AgentPersonalInfo: React.FC<AgentPersonalInfoProps> = ({
               <div className="flex items-center gap-3">
                 <Mail className="h-4 w-4 text-gray-500" />
                 <span className="text-sm">
-                  {agent.email || `${agent.name.toLowerCase().replace(' ', '.')}@hopital.fr`}
+                  {agent.email || (agent.name ? `${agent.name.toLowerCase().replace(' ', '.')}@hopital.fr` : 'email@hopital.fr')}
                 </span>
               </div>
               

@@ -31,7 +31,7 @@ const UserManagementSupabase = () => {
     email: '',
     phone: '',
     role: 'employe' as 'admin' | 'chef_service' | 'employe',
-    service: 'medecine' as 'medecine' | null,
+    service: 'medecine' as string | null,
     hire_date: '',
     specialization: '',
     weeklyHours: 35
@@ -516,7 +516,7 @@ const UserManagementSupabase = () => {
                 <Label htmlFor="edit-service">Service</Label>
                 <Select
                   value={formData.service || ''}
-                  onValueChange={(value: 'medecine' | null) => 
+                  onValueChange={(value: string) => 
                     setFormData({...formData, service: value})
                   }
                 >
@@ -525,6 +525,12 @@ const UserManagementSupabase = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="medecine">Médecine</SelectItem>
+                    <SelectItem value="radiologie">Radiologie</SelectItem>
+                    <SelectItem value="kine">Kiné</SelectItem>
+                    <SelectItem value="infirmerie">Infirmerie</SelectItem>
+                    <SelectItem value="prevention">Prévention</SelectItem>
+                    <SelectItem value="dentiste">Dentiste</SelectItem>
+                    <SelectItem value="administration">Administration</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -647,6 +653,12 @@ const UserManagementSupabase = () => {
               <SelectContent>
                 <SelectItem value="all">Tous les services</SelectItem>
                 <SelectItem value="medecine">Médecine</SelectItem>
+                <SelectItem value="radiologie">Radiologie</SelectItem>
+                <SelectItem value="kine">Kiné</SelectItem>
+                <SelectItem value="infirmerie">Infirmerie</SelectItem>
+                <SelectItem value="prevention">Prévention</SelectItem>
+                <SelectItem value="dentiste">Dentiste</SelectItem>
+                <SelectItem value="administration">Administration</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -713,7 +725,7 @@ const UserManagementSupabase = () => {
                   <Label htmlFor="service">Service</Label>
                   <Select
                     value={createFormData.service || ''}
-                    onValueChange={(value: 'medecine' | null) => 
+                    onValueChange={(value: string) => 
                       setCreateFormData({...createFormData, service: value})
                     }
                   >
@@ -722,6 +734,12 @@ const UserManagementSupabase = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="medecine">Médecine</SelectItem>
+                      <SelectItem value="radiologie">Radiologie</SelectItem>
+                      <SelectItem value="kine">Kiné</SelectItem>
+                      <SelectItem value="infirmerie">Infirmerie</SelectItem>
+                      <SelectItem value="prevention">Prévention</SelectItem>
+                      <SelectItem value="dentiste">Dentiste</SelectItem>
+                      <SelectItem value="administration">Administration</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
